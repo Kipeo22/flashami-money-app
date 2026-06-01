@@ -1,122 +1,100 @@
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AppIcon } from '@/components/ui/app-icon';
+import { AppButton } from '@/components/ui/button';
+import { AppScreen } from '@/components/ui/app-screen';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const theme = useTheme();
+
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.hero}>
-              <ThemedText type="title" style={styles.title}>
-                Flashami Money
-              </ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.lead}>
-                イベントや旅行の支出を、roomごとに整理して集めるモバイルアプリです。
-              </ThemedText>
-            </ThemedView>
+    <AppScreen centered>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.brandMark,
+            Shadow.card,
+            { backgroundColor: theme.primarySoft },
+          ]}
+        >
+          <AppIcon color={theme.primary} name="wallet" size={34} />
+        </View>
 
-            <ThemedView type="backgroundElement" style={styles.statusPanel}>
-              <ThemedText type="smallBold">Step 0 setup</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Supabase: {isSupabaseConfigured ? 'configured' : 'env required'}
-              </ThemedText>
-            </ThemedView>
+        <View style={styles.header}>
+          <ThemedText type="title" style={styles.title}>
+            Flashami Money
+          </ThemedText>
+          <ThemedText
+            type="default"
+            themeColor="textSecondary"
+            style={styles.lead}
+          >
+            イベントや旅行の支出を、roomごとに整理して集めるモバイルアプリです。
+          </ThemedText>
+        </View>
 
-            <ThemedView style={styles.actions}>
-              <Link href="/login" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                    ログインへ
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              <Link href="/rooms" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold">Room一覧へ</ThemedText>
-                </Pressable>
-              </Link>
-            </ThemedView>
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+        <View style={[styles.statusPanel, { backgroundColor: theme.surface }]}>
+          <ThemedText type="captionBold" themeColor="textSecondary">
+            Supabase
+          </ThemedText>
+          <ThemedText type="headline">
+            {isSupabaseConfigured ? 'configured' : 'env required'}
+          </ThemedText>
+        </View>
+
+        <View style={styles.actions}>
+          <AppButton
+            icon="arrowRight"
+            label="ログインへ"
+            onPress={() => router.push('/login')}
+          />
+          <AppButton
+            label="Room一覧へ"
+            onPress={() => router.push('/rooms')}
+            variant="secondary"
+          />
+        </View>
+      </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
-  container: {
+  content: {
+    gap: Spacing.five,
     width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
   },
-  hero: {
-    gap: Spacing.three,
+  brandMark: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    borderRadius: Radius.medium,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
+  },
+  header: {
+    alignItems: 'center',
+    gap: Spacing.two,
   },
   title: {
-    fontSize: 42,
-    lineHeight: 48,
+    textAlign: 'center',
   },
   lead: {
-    maxWidth: 520,
+    maxWidth: 340,
+    textAlign: 'center',
   },
   statusPanel: {
+    borderRadius: Radius.large,
     gap: Spacing.one,
-    borderRadius: Spacing.two,
     padding: Spacing.three,
   },
   actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  primaryButton: {
-    minHeight: 48,
-    justifyContent: 'center',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-  },
-  secondaryButton: {
-    minHeight: 48,
-    justifyContent: 'center',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-    borderColor: '#a3a3a3',
-  },
-  pressed: {
-    opacity: 0.72,
+    gap: Spacing.three,
   },
 });

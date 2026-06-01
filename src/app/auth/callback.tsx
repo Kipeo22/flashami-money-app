@@ -1,57 +1,51 @@
-import { ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AppScreen } from '@/components/ui/app-screen';
+import { Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/features/auth/auth-context';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function AuthCallbackScreen() {
+  const theme = useTheme();
   const { authCallbackError } = useAuth();
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.container}>
-          {authCallbackError ? (
-            <>
-              <ThemedText type="subtitle">ログインできませんでした</ThemedText>
-              <ThemedText style={styles.errorText}>
-                {authCallbackError}
-              </ThemedText>
-            </>
-          ) : (
-            <>
-              <ActivityIndicator color="#0071e3" />
-              <ThemedText type="small" themeColor="textSecondary">
-                ログイン状態を確認しています。
-              </ThemedText>
-            </>
-          )}
-        </ThemedView>
-      </SafeAreaView>
-    </ThemedView>
+    <AppScreen centered>
+      <View style={styles.content}>
+        {authCallbackError ? (
+          <View style={[styles.panel, { backgroundColor: theme.surface }]}>
+            <ThemedText type="subtitle" style={styles.centerText}>
+              ログインできませんでした
+            </ThemedText>
+            <ThemedText style={[styles.centerText, { color: theme.danger }]}>
+              {authCallbackError}
+            </ThemedText>
+          </View>
+        ) : (
+          <View style={[styles.panel, { backgroundColor: theme.surface }]}>
+            <ActivityIndicator color={theme.primary} />
+            <ThemedText type="small" themeColor="textSecondary">
+              ログイン状態を確認しています。
+            </ThemedText>
+          </View>
+        )}
+      </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
+  content: {
+    width: '100%',
   },
-  safeArea: {
-    flex: 1,
+  panel: {
     alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: Radius.large,
+    gap: Spacing.three,
     padding: Spacing.four,
   },
-  container: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  errorText: {
-    color: '#b42318',
+  centerText: {
     textAlign: 'center',
   },
 });

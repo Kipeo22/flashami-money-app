@@ -1,16 +1,12 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AppIcon } from '@/components/ui/app-icon';
+import { AppButton } from '@/components/ui/button';
+import { AppScreen } from '@/components/ui/app-screen';
+import { TextField } from '@/components/ui/text-field';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/features/auth/auth-context';
 import { useTheme } from '@/hooks/use-theme';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -45,131 +41,115 @@ export default function LoginScreen() {
   };
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">ログイン</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                参加登録済みのメールアドレスにログインリンクを送ります。
-              </ThemedText>
-            </ThemedView>
+    <AppScreen centered>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.brandMark,
+            Shadow.card,
+            { backgroundColor: theme.primarySoft },
+          ]}
+        >
+          <AppIcon color={theme.primary} name="wallet" size={34} />
+        </View>
 
-            <ThemedView type="backgroundElement" style={styles.form}>
-              <ThemedText type="smallBold">メールアドレス</ThemedText>
-              <TextInput
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
-                editable={!isSending && isSupabaseConfigured}
-                inputMode="email"
-                keyboardType="email-address"
-                onChangeText={setEmail}
-                placeholder="name@example.com"
-                placeholderTextColor={theme.textSecondary}
-                style={[
-                  styles.input,
-                  {
-                    borderColor: theme.backgroundSelected,
-                    color: theme.text,
-                    backgroundColor: theme.background,
-                  },
-                ]}
-                value={email}
-              />
+        <View style={styles.header}>
+          <ThemedText type="title" style={styles.title}>
+            Flashami Money
+          </ThemedText>
+          <ThemedText
+            type="default"
+            themeColor="textSecondary"
+            style={styles.subtitle}
+          >
+            イベントや旅行の支出をスマートに管理
+          </ThemedText>
+        </View>
 
-              {!isSupabaseConfigured && (
-                <ThemedText type="small" style={styles.errorText}>
-                  EXPO_PUBLIC_SUPABASE_URL と
-                  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY を設定してください。
-                </ThemedText>
-              )}
+        <View style={styles.form}>
+          <TextField
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            editable={!isSending && isSupabaseConfigured}
+            icon="mail"
+            inputMode="email"
+            keyboardType="email-address"
+            label="メールアドレス"
+            onChangeText={setEmail}
+            placeholder="example@mail.com"
+            value={email}
+          />
 
-              {(errorMessage || authCallbackError) && (
-                <ThemedText type="small" style={styles.errorText}>
-                  {errorMessage ?? authCallbackError}
-                </ThemedText>
-              )}
+          {!isSupabaseConfigured && (
+            <ThemedText type="small" style={{ color: theme.danger }}>
+              EXPO_PUBLIC_SUPABASE_URL と EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+              を設定してください。
+            </ThemedText>
+          )}
 
-              {message && (
-                <ThemedText type="small" themeColor="textSecondary">
-                  {message}
-                </ThemedText>
-              )}
+          {(errorMessage || authCallbackError) && (
+            <ThemedText type="small" style={{ color: theme.danger }}>
+              {errorMessage ?? authCallbackError}
+            </ThemedText>
+          )}
 
-              <Pressable
-                disabled={isSending || !isSupabaseConfigured}
-                onPress={handleSubmit}
-                style={({ pressed }) => [
-                  styles.button,
-                  (pressed || isSending || !isSupabaseConfigured) &&
-                    styles.pressed,
-                ]}
-              >
-                {isSending ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <ThemedText type="smallBold" style={styles.buttonText}>
-                    メールリンクを送信
-                  </ThemedText>
-                )}
-              </Pressable>
-            </ThemedView>
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+          {message && (
+            <ThemedText type="small" themeColor="textSecondary">
+              {message}
+            </ThemedText>
+          )}
+
+          <AppButton
+            disabled={!isSupabaseConfigured}
+            icon="arrowRight"
+            isLoading={isSending}
+            label="ログイン"
+            onPress={handleSubmit}
+          />
+        </View>
+
+        <ThemedText
+          type="caption"
+          themeColor="textSecondary"
+          style={styles.footnote}
+        >
+          登録済みのメールアドレスでログインしてください
+        </ThemedText>
+      </View>
+    </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
-  container: {
+  content: {
+    alignItems: 'stretch',
+    gap: Spacing.five,
     width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
+  },
+  brandMark: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    borderRadius: Radius.medium,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
   },
   header: {
+    alignItems: 'center',
     gap: Spacing.two,
   },
+  title: {
+    textAlign: 'center',
+  },
+  subtitle: {
+    maxWidth: 280,
+    textAlign: 'center',
+  },
   form: {
-    gap: Spacing.three,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+    gap: Spacing.four,
   },
-  input: {
-    minHeight: 50,
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    fontSize: 17,
-  },
-  button: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 980,
-    backgroundColor: '#0071e3',
-  },
-  buttonText: {
-    color: '#ffffff',
-  },
-  errorText: {
-    color: '#b42318',
-  },
-  pressed: {
-    opacity: 0.72,
+  footnote: {
+    textAlign: 'center',
   },
 });

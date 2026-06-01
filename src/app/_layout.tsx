@@ -55,7 +55,7 @@ function AuthenticatedStack() {
   return (
     <>
       <AnimatedSplashOverlay />
-      <Stack>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ title: 'Flashami Money' }} />
         <Stack.Screen name="login" options={{ title: 'ログイン' }} />
         <Stack.Screen

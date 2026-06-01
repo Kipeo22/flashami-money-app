@@ -1,22 +1,20 @@
 import { Link, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { AppBottomNav } from '@/components/ui/app-bottom-nav';
+import { AppIcon } from '@/components/ui/app-icon';
+import { AppScreen } from '@/components/ui/app-screen';
+import { Badge } from '@/components/ui/badge';
+import { Radius, Shadow, Spacing } from '@/constants/theme';
 import { useAuth } from '@/features/auth/auth-context';
 import {
   fetchCurrentUserRoomDetail,
   formatRoomPeriod,
   type RoomDetail,
 } from '@/features/rooms/rooms-api';
+import { useTheme } from '@/hooks/use-theme';
 
 const roleLabel = {
   admin: '運営者',
@@ -24,6 +22,7 @@ const roleLabel = {
 } as const;
 
 export default function RoomDetailScreen() {
+  const theme = useTheme();
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const { user } = useAuth();
   const [roomDetail, setRoomDetail] = useState<RoomDetail | null>(null);
@@ -56,150 +55,181 @@ export default function RoomDetailScreen() {
   }, [loadRoom]);
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedView style={styles.container}>
-            <Link href="/rooms" asChild>
-              <Pressable style={({ pressed }) => pressed && styles.pressed}>
-                <ThemedText type="linkPrimary">Room一覧へ戻る</ThemedText>
-              </Pressable>
-            </Link>
+    <AppScreen
+      bottomNavigation={<AppBottomNav active="rooms" />}
+      surface="gray"
+    >
+      <View style={styles.content}>
+        <Link href="/rooms" asChild>
+          <Pressable
+            style={({ pressed }) => [
+              styles.backLink,
+              pressed && styles.pressed,
+            ]}
+          >
+            <AppIcon color={theme.primary} name="arrowLeft" size={16} />
+            <ThemedText type="linkPrimary">Room一覧へ戻る</ThemedText>
+          </Pressable>
+        </Link>
 
-            {isLoading ? (
-              <ThemedView type="backgroundElement" style={styles.loadingPanel}>
-                <ActivityIndicator color="#0071e3" />
+        {isLoading ? (
+          <View style={[styles.statePanel, { backgroundColor: theme.surface }]}>
+            <ActivityIndicator color={theme.primary} />
+            <ThemedText type="small" themeColor="textSecondary">
+              Roomを確認しています。
+            </ThemedText>
+          </View>
+        ) : errorMessage ? (
+          <View style={[styles.statePanel, { backgroundColor: theme.surface }]}>
+            <ThemedText type="small" style={{ color: theme.danger }}>
+              {errorMessage}
+            </ThemedText>
+          </View>
+        ) : !roomDetail ? (
+          <View style={[styles.statePanel, { backgroundColor: theme.surface }]}>
+            <ThemedText type="headline">このroomは表示できません</ThemedText>
+            <ThemedText
+              type="small"
+              themeColor="textSecondary"
+              style={styles.centerText}
+            >
+              ログイン中のメールアドレスがroom_membersに登録されていません。
+            </ThemedText>
+          </View>
+        ) : (
+          <>
+            <View
+              style={[
+                styles.heroCard,
+                Shadow.card,
+                { backgroundColor: theme.surface },
+              ]}
+            >
+              <View style={styles.heroHeader}>
+                <ThemedText type="title" style={styles.roomTitle}>
+                  {roomDetail.room.name}
+                </ThemedText>
+                <Badge tone={roomDetail.role === 'admin' ? 'blue' : 'gray'}>
+                  {roleLabel[roomDetail.role]}
+                </Badge>
+              </View>
+
+              <View style={styles.periodRow}>
+                <AppIcon
+                  color={theme.textSecondary}
+                  name="calendar"
+                  size={16}
+                />
                 <ThemedText type="small" themeColor="textSecondary">
-                  Roomを確認しています。
+                  {formatRoomPeriod(roomDetail.room)}
                 </ThemedText>
-              </ThemedView>
-            ) : errorMessage ? (
-              <ThemedView type="backgroundElement" style={styles.messagePanel}>
-                <ThemedText type="small" style={styles.errorText}>
-                  {errorMessage}
-                </ThemedText>
-              </ThemedView>
-            ) : !roomDetail ? (
-              <ThemedView type="backgroundElement" style={styles.messagePanel}>
-                <ThemedText type="smallBold">
-                  このroomは表示できません
-                </ThemedText>
+              </View>
+
+              {roomDetail.room.description && (
                 <ThemedText type="small" themeColor="textSecondary">
-                  ログイン中のメールアドレスがroom_membersに登録されていません。
+                  {roomDetail.room.description}
                 </ThemedText>
-              </ThemedView>
-            ) : (
-              <>
-                <ThemedView style={styles.header}>
-                  <ThemedText type="subtitle">
-                    {roomDetail.room.name}
-                  </ThemedText>
-                  <ThemedText themeColor="textSecondary">
-                    {formatRoomPeriod(roomDetail.room)}
-                  </ThemedText>
-                  {roomDetail.room.description && (
-                    <ThemedText>{roomDetail.room.description}</ThemedText>
-                  )}
-                </ThemedView>
+              )}
+            </View>
 
-                <ThemedView style={styles.statsRow}>
-                  <ThemedView type="backgroundElement" style={styles.statBox}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      自分のロール
-                    </ThemedText>
-                    <ThemedText type="smallBold">
-                      {roleLabel[roomDetail.role]}
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedView type="backgroundElement" style={styles.statBox}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      支出件数
-                    </ThemedText>
-                    <ThemedText type="smallBold">
-                      {roomDetail.expenseCount} 件
-                    </ThemedText>
-                  </ThemedView>
-                  <ThemedView type="backgroundElement" style={styles.statBox}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      参加状態
-                    </ThemedText>
-                    <ThemedText type="smallBold">
-                      {roomDetail.status === 'joined' ? '参加済み' : '招待中'}
-                    </ThemedText>
-                  </ThemedView>
-                </ThemedView>
+            <View style={styles.statsRow}>
+              <StatCard
+                label="支出件数"
+                value={`${roomDetail.expenseCount}件`}
+              />
+              <StatCard
+                label="参加状態"
+                value={roomDetail.status === 'joined' ? '参加済み' : '招待中'}
+              />
+            </View>
 
-                <ThemedView type="backgroundElement" style={styles.nextPanel}>
-                  <ThemedText type="smallBold">
-                    次のStepで支出一覧を実装します
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    現時点ではroom選択後の遷移先として、参加状態と件数だけを表示します。
-                  </ThemedText>
-                </ThemedView>
-              </>
-            )}
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+            <View
+              style={[styles.nextPanel, { backgroundColor: theme.surface }]}
+            >
+              <ThemedText type="headline">支出一覧は次のStepで追加</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                この画面は今後、支出登録、承認状況、精算メモを同じカード基準で拡張します。
+              </ThemedText>
+            </View>
+          </>
+        )}
+      </View>
+    </AppScreen>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  const theme = useTheme();
+
+  return (
+    <View style={[styles.statCard, { backgroundColor: theme.surface }]}>
+      <ThemedText type="caption" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <ThemedText type="headline">{value}</ThemedText>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    padding: Spacing.four,
-  },
-  container: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
+  content: {
     gap: Spacing.four,
+    paddingBottom: Spacing.five,
   },
-  header: {
-    gap: Spacing.two,
-  },
-  loadingPanel: {
-    minHeight: 180,
+  backLink: {
     alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
     gap: Spacing.two,
-    borderRadius: Spacing.two,
+    minHeight: 38,
+  },
+  statePanel: {
+    alignItems: 'center',
+    borderRadius: Radius.large,
+    gap: Spacing.two,
+    justifyContent: 'center',
+    minHeight: 180,
     padding: Spacing.four,
   },
-  messagePanel: {
-    gap: Spacing.two,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+  centerText: {
+    textAlign: 'center',
   },
-  errorText: {
-    color: '#b42318',
+  heroCard: {
+    borderRadius: Radius.large,
+    gap: Spacing.twoHalf,
+    padding: Spacing.four,
+  },
+  heroHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: Spacing.three,
+    justifyContent: 'space-between',
+  },
+  roomTitle: {
+    flex: 1,
+  },
+  periodRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
   },
   statsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.three,
   },
-  statBox: {
-    minWidth: 150,
+  statCard: {
+    borderRadius: Radius.large,
     flex: 1,
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    minHeight: 92,
     padding: Spacing.three,
   },
   nextPanel: {
+    borderRadius: Radius.large,
     gap: Spacing.two,
-    borderRadius: Spacing.two,
-    padding: Spacing.three,
+    padding: Spacing.four,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.68,
   },
 });

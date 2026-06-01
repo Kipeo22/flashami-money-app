@@ -7,9 +7,12 @@ export type ThemedTextProps = TextProps & {
   type?:
     | 'default'
     | 'title'
+    | 'headline'
     | 'small'
     | 'smallBold'
     | 'subtitle'
+    | 'caption'
+    | 'captionBold'
     | 'link'
     | 'linkPrimary'
     | 'code';
@@ -30,9 +33,12 @@ export function ThemedText({
         { color: theme[themeColor ?? 'text'] },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
+        type === 'headline' && styles.headline,
         type === 'small' && styles.small,
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
+        type === 'caption' && styles.caption,
+        type === 'captionBold' && styles.captionBold,
         type === 'link' && styles.link,
         type === 'linkPrimary' && styles.linkPrimary,
         type === 'code' && styles.code,
@@ -44,39 +50,76 @@ export function ThemedText({
 }
 
 const styles = StyleSheet.create({
+  caption: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 500,
+    letterSpacing: 0,
+  },
+  captionBold: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 700,
+    letterSpacing: 0,
+  },
   small: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: 500,
+    letterSpacing: 0,
   },
   smallBold: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
     lineHeight: 20,
     fontWeight: 700,
+    letterSpacing: 0,
   },
   default: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontFamily: Fonts.sans,
+    fontSize: 17,
+    lineHeight: 25,
     fontWeight: 500,
+    letterSpacing: 0,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontFamily: Fonts.sans,
+    fontSize: 34,
+    fontWeight: 700,
+    lineHeight: 41,
+    letterSpacing: 0,
+  },
+  headline: {
+    fontFamily: Fonts.sans,
+    fontSize: 22,
+    fontWeight: 700,
+    lineHeight: 28,
+    letterSpacing: 0,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: Fonts.sans,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: 700,
+    letterSpacing: 0,
   },
   link: {
-    lineHeight: 30,
+    fontFamily: Fonts.sans,
+    lineHeight: 20,
     fontSize: 14,
+    fontWeight: 600,
+    letterSpacing: 0,
   },
   linkPrimary: {
-    lineHeight: 30,
+    fontFamily: Fonts.sans,
+    lineHeight: 20,
     fontSize: 14,
-    color: '#3c87f7',
+    fontWeight: 700,
+    color: '#0071e3',
+    letterSpacing: 0,
   },
   code: {
     fontFamily: Fonts.mono,

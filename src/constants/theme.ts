@@ -7,18 +7,40 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
+    text: '#1d1d1f',
     background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    backgroundElement: '#f5f5f7',
+    backgroundSelected: '#e8e8ed',
+    surface: '#ffffff',
+    surfaceRaised: '#ffffff',
+    border: '#dfe1e7',
+    separator: '#e7e8ee',
+    textSecondary: '#5f636d',
+    textTertiary: '#8a8f99',
+    primary: '#0071e3',
+    primaryPressed: '#005bb8',
+    primarySoft: '#eaf3ff',
+    danger: '#b42318',
+    success: '#147a3f',
+    tabBar: '#fbfbfd',
   },
   dark: {
-    text: '#ffffff',
+    text: '#f5f5f7',
     background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    backgroundElement: '#16171a',
+    backgroundSelected: '#2e3135',
+    surface: '#1f2024',
+    surfaceRaised: '#2a2b31',
+    border: '#3a3c43',
+    separator: '#34363c',
+    textSecondary: '#b0b4ba',
+    textTertiary: '#7d838c',
+    primary: '#2997ff',
+    primaryPressed: '#147ce5',
+    primarySoft: '#0f2b47',
+    danger: '#ffb4ab',
+    success: '#8bdba8',
+    tabBar: '#101114',
   },
 } as const;
 
@@ -53,11 +75,48 @@ export const Spacing = {
   half: 2,
   one: 4,
   two: 8,
+  twoHalf: 12,
   three: 16,
   four: 24,
   five: 32,
+  fiveHalf: 40,
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const Radius = {
+  small: 8,
+  medium: 12,
+  large: 20,
+  xlarge: 28,
+  pill: 980,
+} as const;
+
+export const Shadow = {
+  card: Platform.select({
+    ios: {
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+    },
+    android: {
+      elevation: 4,
+    },
+    default: {},
+  }),
+  floating: Platform.select({
+    ios: {
+      shadowColor: '#000000',
+      shadowOpacity: 0.12,
+      shadowRadius: 22,
+      shadowOffset: { width: 0, height: 12 },
+    },
+    android: {
+      elevation: 8,
+    },
+    default: {},
+  }),
+} as const;
+
+export const BottomTabInset = Platform.select({ ios: 58, android: 74 }) ?? 58;
+export const MaxContentWidth = 560;
