@@ -16,7 +16,7 @@
   - `npm run format:check`
   - `npx expo export --platform web --output-dir /private/tmp/flashami-money-app-web-export-final`
 - Pushed branch `step0-initial-setup` to origin.
-- PR creation via the GitHub connector failed with 403 `Resource not accessible by integration`.
+- `Resource not accessible by integration`.
   Use the compare URL to open the PR manually if `gh` is not available locally:
   `https://github.com/Kipeo22/flashami-money-app/compare/develop...step0-initial-setup?expand=1`
 
