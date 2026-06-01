@@ -1,0 +1,63 @@
+name: Slack PR Notify
+
+on:
+  pull_request:
+    types:
+      - opened
+      - ready_for_review
+      - closed
+
+jobs:
+  notify-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify PR opened
+        if: github.event.action == 'opened'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🆕 *PRが作成されました！*\n\n*タイトル:* ${PR_TITLE}\n*作った人:* ${PR_AUTHOR}\n*ブランチ:* ${HEAD_BRANCH} → ${BASE_BRANCH}\n*チェックする:* ${PR_URL}\"
+          }" \
+          "$SLACK_WEBHOOK_URL"
+
+      - name: Notify merged into develop
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🧪 *developにマージされました！*\n\n開発環境で動くようになりました！\n\n*タイトル:* ${PR_TITLE}\n*作った人:* ${PR_AUTHOR}\n*マージした人:* ${MERGED_BY}\n*ブランチ:* ${HEAD_BRANCH} → ${BASE_BRANCH}\n*確認する:* ${PR_URL}\"
+          }" \
+          "$SLACK_WEBHOOK_URL"
+
+      - name: Notify merged into main
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🚀 *mainにマージされました！*\n\n新機能が追加されたかも👀\n\n*タイトル:* ${PR_TITLE}\n*作った人:* ${PR_AUTHOR}\n*マージした人:* ${MERGED_BY}\n*ブランチ:* ${HEAD_BRANCH} → ${BASE_BRANCH}\n*確認する:* ${PR_URL}\"
+          }" \
+          "$SLACK_WEBHOOK_URL"
