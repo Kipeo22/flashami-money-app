@@ -575,7 +575,10 @@ export default function ExpenseCreateScreen() {
                     onPress={pickReceiptFromLibrary}
                     style={({ pressed }) => [
                       styles.secondaryButton,
-                      { borderColor: theme.primary },
+                      {
+                        backgroundColor: theme.primarySoft,
+                        borderColor: theme.primary,
+                      },
                       pressed && styles.pressed,
                     ]}
                   >
@@ -590,7 +593,10 @@ export default function ExpenseCreateScreen() {
                     onPress={takeReceiptPhoto}
                     style={({ pressed }) => [
                       styles.secondaryButton,
-                      { borderColor: theme.primary },
+                      {
+                        backgroundColor: theme.primarySoft,
+                        borderColor: theme.primary,
+                      },
                       pressed && styles.pressed,
                     ]}
                   >
@@ -825,10 +831,11 @@ export default function ExpenseCreateScreen() {
               >
                 <ThemedText
                   type="smallBold"
-                  style={[
-                    styles.buttonText,
-                    { color: isSubmitDisabled ? theme.textDisabled : '#fff' },
-                  ]}
+                  style={{
+                    color: isSubmitDisabled
+                      ? theme.textDisabled
+                      : theme.primaryText,
+                  }}
                 >
                   {isSubmitting ? '登録中...' : '支出を登録する'}
                 </ThemedText>
@@ -900,14 +907,14 @@ function OptionButton({
         styles.optionButton,
         {
           backgroundColor: isSelected ? theme.primary : 'transparent',
-          borderColor: isSelected ? theme.primary : theme.border,
+          borderColor: theme.primary,
         },
         pressed && styles.pressed,
       ]}
     >
       <ThemedText
         type="smallBold"
-        style={isSelected ? styles.optionButtonTextSelected : undefined}
+        style={{ color: isSelected ? theme.primaryText : theme.primary }}
       >
         {label}
       </ThemedText>
@@ -1011,9 +1018,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  optionButtonTextSelected: {
-    color: '#ffffff',
-  },
   errorText: {
     color: '#e01e5a',
   },
@@ -1090,9 +1094,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   pressed: {
     opacity: 0.72,

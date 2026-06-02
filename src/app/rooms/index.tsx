@@ -103,12 +103,18 @@ export default function RoomsScreen() {
               <Link href={'/rooms/new' as any} asChild>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.button,
-                    { backgroundColor: theme.primary },
+                    styles.primaryButton,
+                    {
+                      backgroundColor: theme.primary,
+                      borderColor: theme.primary,
+                    },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText type="smallBold" style={styles.buttonText}>
+                  <ThemedText
+                    type="smallBold"
+                    style={{ color: theme.primaryText }}
+                  >
                     roomを作成する
                   </ThemedText>
                 </Pressable>
@@ -186,18 +192,35 @@ export default function RoomsScreen() {
                     style={[styles.roomCard, { borderColor: theme.border }]}
                   >
                     <View style={styles.roomCardHeader}>
-                      <ThemedText type="smallBold">{room.name}</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {room.expense_count}件
+                      <ThemedText type="smallBold" style={styles.roomTitle}>
+                        {room.name}
                       </ThemedText>
+                      <View
+                        style={[
+                          styles.countBadge,
+                          { backgroundColor: theme.primarySoft },
+                        ]}
+                      >
+                        <ThemedText
+                          type="smallBold"
+                          style={{ color: theme.primary }}
+                        >
+                          {room.expense_count}件
+                        </ThemedText>
+                      </View>
                     </View>
                     <ThemedText type="small" themeColor="textSecondary">
                       {room.description || '説明はまだ登録されていません。'}
                     </ThemedText>
-                    <View style={styles.metaRow}>
+                    <View
+                      style={[
+                        styles.metaRow,
+                        { backgroundColor: theme.overBackground },
+                      ]}
+                    >
                       <Meta label="期間" value={formatRoomPeriod(room)} />
                       <Meta label="ロール" value={room.member_role} />
-                      <Meta label="状態" value={room.member_status} />
+                      <Meta label="状態" value={formatMemberStatus(room)} />
                     </View>
                     <View style={styles.roomActions}>
                       <Link
@@ -206,15 +229,18 @@ export default function RoomsScreen() {
                       >
                         <Pressable
                           style={({ pressed }) => [
-                            styles.button,
+                            styles.primaryButton,
                             styles.roomActionButton,
-                            { backgroundColor: theme.primary },
+                            {
+                              backgroundColor: theme.primary,
+                              borderColor: theme.primary,
+                            },
                             pressed && styles.pressed,
                           ]}
                         >
                           <ThemedText
                             type="smallBold"
-                            style={styles.buttonText}
+                            style={{ color: theme.primaryText }}
                           >
                             支出を登録する
                           </ThemedText>
@@ -268,6 +294,10 @@ function formatRoomPeriod(room: UserRoomRecord) {
   return `${room.start_date ?? '-'} - ${room.end_date ?? '-'}`;
 }
 
+function formatMemberStatus(room: UserRoomRecord) {
+  return room.member_status === 'joined' ? '参加中' : '招待中';
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -307,13 +337,26 @@ const styles = StyleSheet.create({
   },
   roomCardHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  roomTitle: {
+    flex: 1,
+    fontSize: 18,
+    lineHeight: 27,
+  },
+  countBadge: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
+    borderRadius: Radius.control,
+    padding: Spacing.two,
   },
   metaItem: {
     minWidth: 120,
@@ -331,11 +374,12 @@ const styles = StyleSheet.create({
   actions: {
     gap: Spacing.two,
   },
-  button: {
+  primaryButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
@@ -345,9 +389,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   pressed: {
     opacity: 0.72,

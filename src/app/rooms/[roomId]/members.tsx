@@ -128,7 +128,10 @@ export default function RoomMembersScreen() {
                       pressed && styles.pressed,
                     ]}
                   >
-                    <ThemedText type="smallBold" style={styles.buttonText}>
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: theme.primaryText }}
+                    >
                       支出を登録する
                     </ThemedText>
                   </Pressable>
@@ -308,9 +311,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   pressed: {
     opacity: 0.72,

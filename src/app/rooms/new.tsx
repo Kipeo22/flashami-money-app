@@ -286,7 +286,10 @@ export default function RoomCreateScreen() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText type="smallBold" style={styles.buttonText}>
+                  <ThemedText
+                    type="smallBold"
+                    style={{ color: theme.primaryText }}
+                  >
                     追加
                   </ThemedText>
                 </Pressable>
@@ -345,10 +348,11 @@ export default function RoomCreateScreen() {
               >
                 <ThemedText
                   type="smallBold"
-                  style={[
-                    styles.buttonText,
-                    { color: !canCreateRoom ? theme.textDisabled : '#ffffff' },
-                  ]}
+                  style={{
+                    color: !canCreateRoom
+                      ? theme.textDisabled
+                      : theme.primaryText,
+                  }}
                 >
                   {isSubmitting ? '作成中...' : 'roomを作成する'}
                 </ThemedText>
@@ -511,9 +515,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   pressed: {
     opacity: 0.72,

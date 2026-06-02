@@ -62,7 +62,10 @@ export default function HomeScreen() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  <ThemedText
+                    type="smallBold"
+                    style={{ color: theme.primaryText }}
+                  >
                     Room一覧を開く
                   </ThemedText>
                 </Pressable>
@@ -155,9 +158,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
   },
   secondaryButton: {
     minHeight: 48,

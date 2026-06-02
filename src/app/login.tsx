@@ -164,12 +164,11 @@ export default function LoginScreen() {
               >
                 <ThemedText
                   type="smallBold"
-                  style={[
-                    styles.buttonText,
-                    {
-                      color: !canSendMagicLink ? theme.textDisabled : '#ffffff',
-                    },
-                  ]}
+                  style={{
+                    color: !canSendMagicLink
+                      ? theme.textDisabled
+                      : theme.primaryText,
+                  }}
                 >
                   {isSubmitting ? '送信中...' : 'メールリンクを送信'}
                 </ThemedText>
@@ -298,9 +297,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Radius.control,
     borderWidth: 1,
-  },
-  buttonText: {
-    color: '#ffffff',
   },
   pressed: {
     opacity: 0.72,
