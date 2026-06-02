@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import {
   createRoomWithMembers,
   dedupeMemberEmails,
@@ -36,6 +36,11 @@ export default function RoomCreateScreen() {
   const [memberEmails, setMemberEmails] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const canCreateRoom =
+    name.trim().length > 0 &&
+    startDate.trim().length > 0 &&
+    endDate.trim().length > 0 &&
+    !isSubmitting;
 
   useEffect(() => {
     let active = true;
@@ -155,7 +160,17 @@ export default function RoomCreateScreen() {
               </ThemedView>
             ) : null}
 
-            <ThemedView type="backgroundElement" style={styles.form}>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">基本情報</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  必須
+                </ThemedText>
+              </View>
+
               <Field label="room名">
                 <TextInput
                   autoCapitalize="words"
@@ -232,12 +247,16 @@ export default function RoomCreateScreen() {
               </View>
             </ThemedView>
 
-            <ThemedView type="backgroundElement" style={styles.form}>
-              <ThemedText type="smallBold">参加者メールアドレス</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                追加されたメールアドレスは room
-                作成後に参加者として登録されます。
-              </ThemedText>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">参加者メールアドレス</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  任意
+                </ThemedText>
+              </View>
 
               <View style={styles.emailComposer}>
                 <TextInput
@@ -312,23 +331,23 @@ export default function RoomCreateScreen() {
 
             <View style={styles.actions}>
               <Pressable
-                disabled={isSubmitting}
+                disabled={!canCreateRoom}
                 onPress={handleSubmit}
                 style={({ pressed }) => [
                   styles.button,
                   {
-                    backgroundColor: isSubmitting
+                    backgroundColor: !canCreateRoom
                       ? theme.backgroundSelected
                       : theme.primary,
                   },
-                  pressed && !isSubmitting && styles.pressed,
+                  pressed && canCreateRoom && styles.pressed,
                 ]}
               >
                 <ThemedText
                   type="smallBold"
                   style={[
                     styles.buttonText,
-                    { color: isSubmitting ? theme.textSecondary : '#ffffff' },
+                    { color: !canCreateRoom ? theme.textDisabled : '#ffffff' },
                   ]}
                 >
                   {isSubmitting ? '作成中...' : 'roomを作成する'}
@@ -339,11 +358,13 @@ export default function RoomCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
-                  { borderColor: theme.border },
+                  { borderColor: theme.primary },
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold">戻る</ThemedText>
+                <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                  戻る
+                </ThemedText>
               </Pressable>
             </View>
           </ThemedView>
@@ -394,44 +415,56 @@ const styles = StyleSheet.create({
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   form: {
     gap: Spacing.three,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   field: {
     gap: Spacing.one,
   },
   row: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
   rowItem: {
+    minWidth: 140,
     flex: 1,
   },
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
   },
   textArea: {
     minHeight: 96,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
     textAlignVertical: 'top',
   },
   emailComposer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
   emailInput: {
+    minWidth: 220,
     flex: 1,
   },
   chips: {
@@ -442,7 +475,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    borderRadius: 999,
+    borderRadius: Radius.pill,
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     backgroundColor: '#e5e7eb',
@@ -461,21 +494,21 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
   },
   smallButton: {
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
   },
   ghostButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },

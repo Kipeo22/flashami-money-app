@@ -1,11 +1,17 @@
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { sendMagicLink, verifyEmailOtp } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
@@ -17,6 +23,13 @@ export default function LoginScreen() {
   const [otp, setOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const canSendMagicLink =
+    email.trim().length > 0 && !isSubmitting && isSupabaseConfigured;
+  const canVerifyOtp =
+    email.trim().length > 0 &&
+    otp.trim().length === 6 &&
+    !isSubmitting &&
+    isSupabaseConfigured;
 
   useEffect(() => {
     let active = true;
@@ -81,137 +94,147 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.container}>
-          <ThemedView style={styles.header}>
-            <ThemedText type="subtitle">ログイン</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              参加登録済みのメールアドレスでroomにアクセスします。
-            </ThemedText>
-          </ThemedView>
-
-          {!isSupabaseConfigured ? (
-            <ThemedView type="backgroundElement" style={styles.alert}>
-              <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                `EXPO_PUBLIC_SUPABASE_URL` と
-                `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ThemedView style={styles.container}>
+            <ThemedView style={styles.header}>
+              <ThemedText type="subtitle">ログイン</ThemedText>
+              <ThemedText themeColor="textSecondary">
+                参加登録済みのメールアドレスで room にアクセスします。
               </ThemedText>
             </ThemedView>
-          ) : null}
 
-          {feedback ? (
-            <ThemedView type="backgroundElement" style={styles.alert}>
-              <ThemedText type="smallBold">ログイン状況</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {feedback}
-              </ThemedText>
-            </ThemedView>
-          ) : null}
+            {!isSupabaseConfigured ? (
+              <ThemedView type="backgroundElement" style={styles.alert}>
+                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  `EXPO_PUBLIC_SUPABASE_URL` と
+                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
+                </ThemedText>
+              </ThemedView>
+            ) : null}
 
-          <ThemedView type="backgroundElement" style={styles.form}>
-            <ThemedText type="smallBold">メールアドレス</ThemedText>
-            <TextInput
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              placeholder="name@example.com"
-              placeholderTextColor={theme.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              style={[
-                styles.input,
-                {
-                  borderColor: theme.border,
-                  color: theme.text,
-                  backgroundColor: theme.background,
-                },
-              ]}
-            />
-            <Pressable
-              disabled={isSubmitting || !isSupabaseConfigured}
-              onPress={handleSendMagicLink}
-              style={({ pressed }) => [
-                styles.button,
-                {
-                  backgroundColor:
-                    isSubmitting || !isSupabaseConfigured
-                      ? theme.backgroundSelected
-                      : theme.primary,
-                },
-                pressed && styles.pressed,
-              ]}
+            {feedback ? (
+              <ThemedView type="backgroundElement" style={styles.alert}>
+                <ThemedText type="smallBold">ログイン状況</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {feedback}
+                </ThemedText>
+              </ThemedView>
+            ) : null}
+
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
             >
-              <ThemedText
-                type="smallBold"
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">メールアドレス</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  必須
+                </ThemedText>
+              </View>
+              <TextInput
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                placeholder="name@example.com"
+                placeholderTextColor={theme.textSecondary}
+                value={email}
+                onChangeText={setEmail}
                 style={[
-                  styles.buttonText,
+                  styles.input,
                   {
-                    color:
-                      isSubmitting || !isSupabaseConfigured
-                        ? theme.textSecondary
-                        : '#ffffff',
+                    borderColor: theme.border,
+                    color: theme.text,
+                    backgroundColor: theme.background,
                   },
                 ]}
+              />
+              <Pressable
+                disabled={!canSendMagicLink}
+                onPress={handleSendMagicLink}
+                style={({ pressed }) => [
+                  styles.button,
+                  {
+                    backgroundColor: !canSendMagicLink
+                      ? theme.backgroundSelected
+                      : theme.primary,
+                  },
+                  pressed && canSendMagicLink && styles.pressed,
+                ]}
               >
-                {isSubmitting ? '送信中...' : 'メールリンクを送信'}
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
+                <ThemedText
+                  type="smallBold"
+                  style={[
+                    styles.buttonText,
+                    {
+                      color: !canSendMagicLink ? theme.textDisabled : '#ffffff',
+                    },
+                  ]}
+                >
+                  {isSubmitting ? '送信中...' : 'メールリンクを送信'}
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
 
-          <ThemedView type="backgroundElement" style={styles.form}>
-            <ThemedText type="smallBold">6桁コード</ThemedText>
-            <TextInput
-              inputMode="numeric"
-              keyboardType="number-pad"
-              maxLength={6}
-              placeholder="123456"
-              placeholderTextColor={theme.textSecondary}
-              value={otp}
-              onChangeText={setOtp}
-              style={[
-                styles.input,
-                {
-                  borderColor: theme.border,
-                  color: theme.text,
-                  backgroundColor: theme.background,
-                },
-              ]}
-            />
-            <Pressable
-              disabled={isSubmitting || !isSupabaseConfigured}
-              onPress={handleVerifyOtp}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                {
-                  borderColor: theme.border,
-                  backgroundColor:
-                    isSubmitting || !isSupabaseConfigured
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">6桁コード</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  メール受信後
+                </ThemedText>
+              </View>
+              <TextInput
+                inputMode="numeric"
+                keyboardType="number-pad"
+                maxLength={6}
+                placeholder="123456"
+                placeholderTextColor={theme.textSecondary}
+                value={otp}
+                onChangeText={setOtp}
+                style={[
+                  styles.input,
+                  {
+                    borderColor: theme.border,
+                    color: theme.text,
+                    backgroundColor: theme.background,
+                  },
+                ]}
+              />
+              <Pressable
+                disabled={!canVerifyOtp}
+                onPress={handleVerifyOtp}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  {
+                    borderColor: canVerifyOtp ? theme.primary : theme.border,
+                    backgroundColor: !canVerifyOtp
                       ? theme.backgroundSelected
                       : 'transparent',
-                },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText
-                type="smallBold"
-                style={{
-                  color:
-                    isSubmitting || !isSupabaseConfigured
-                      ? theme.textSecondary
-                      : theme.text,
-                }}
+                  },
+                  pressed && canVerifyOtp && styles.pressed,
+                ]}
               >
-                コードでログイン
-              </ThemedText>
-            </Pressable>
-          </ThemedView>
+                <ThemedText
+                  type="smallBold"
+                  style={{
+                    color: !canVerifyOtp ? theme.textDisabled : theme.primary,
+                  }}
+                >
+                  コードでログイン
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
 
-          <Link href="/" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedText type="linkPrimary">ホームへ戻る</ThemedText>
-            </Pressable>
-          </Link>
-        </ThemedView>
+            <Link href="/" asChild>
+              <Pressable style={({ pressed }) => pressed && styles.pressed}>
+                <ThemedText type="linkPrimary">ホームへ戻る</ThemedText>
+              </Pressable>
+            </Link>
+          </ThemedView>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -226,6 +249,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.four,
   },
+  scrollContent: {
+    flexGrow: 1,
+    width: '100%',
+    alignItems: 'center',
+  },
   container: {
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -236,18 +264,25 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.three,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
   },
@@ -255,13 +290,13 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
   },
   secondaryButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     borderWidth: 1,
   },
   buttonText: {

@@ -26,7 +26,7 @@ import { z } from 'zod';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   createExpenseWithTargets,
@@ -440,7 +440,17 @@ export default function ExpenseCreateScreen() {
               </ThemedView>
             ) : null}
 
-            <ThemedView type="backgroundElement" style={styles.form}>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">基本情報</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  必須
+                </ThemedText>
+              </View>
+
               <Field label="支出タイプ" error={errors.expenseType?.message}>
                 <OptionRow>
                   {expenseTypeOptions.map((option) => (
@@ -545,7 +555,17 @@ export default function ExpenseCreateScreen() {
               </Field>
             </ThemedView>
 
-            <ThemedView type="backgroundElement" style={styles.form}>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.form, { borderColor: theme.border }]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">レシート</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  画像または理由
+                </ThemedText>
+              </View>
+
               <Field
                 label="レシート画像"
                 error={errors.receiptImageUrl?.message}
@@ -555,21 +575,31 @@ export default function ExpenseCreateScreen() {
                     onPress={pickReceiptFromLibrary}
                     style={({ pressed }) => [
                       styles.secondaryButton,
-                      { borderColor: theme.border },
+                      { borderColor: theme.primary },
                       pressed && styles.pressed,
                     ]}
                   >
-                    <ThemedText type="smallBold">画像を選択</ThemedText>
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: theme.primary }}
+                    >
+                      画像を選択
+                    </ThemedText>
                   </Pressable>
                   <Pressable
                     onPress={takeReceiptPhoto}
                     style={({ pressed }) => [
                       styles.secondaryButton,
-                      { borderColor: theme.border },
+                      { borderColor: theme.primary },
                       pressed && styles.pressed,
                     ]}
                   >
-                    <ThemedText type="smallBold">撮影する</ThemedText>
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: theme.primary }}
+                    >
+                      撮影する
+                    </ThemedText>
                   </Pressable>
                 </View>
                 {receiptImageUrl ? (
@@ -589,11 +619,16 @@ export default function ExpenseCreateScreen() {
                       onPress={clearReceiptImage}
                       style={({ pressed }) => [
                         styles.clearReceiptButton,
-                        { borderColor: theme.border },
+                        { borderColor: theme.danger },
                         pressed && styles.pressed,
                       ]}
                     >
-                      <ThemedText type="smallBold">画像を削除</ThemedText>
+                      <ThemedText
+                        type="smallBold"
+                        style={{ color: theme.danger }}
+                      >
+                        画像を削除
+                      </ThemedText>
                     </Pressable>
                   </ThemedView>
                 ) : null}
@@ -648,7 +683,17 @@ export default function ExpenseCreateScreen() {
             </ThemedView>
 
             {expenseType === 'personal' ? (
-              <ThemedView type="backgroundElement" style={styles.form}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.form, { borderColor: theme.border }]}
+              >
+                <View style={styles.sectionHeader}>
+                  <ThemedText type="smallBold">対象者</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    個人間立替
+                  </ThemedText>
+                </View>
+
                 <Field label="割り方" error={errors.splitType?.message}>
                   <OptionRow>
                     {splitTypeOptions.map((option) => (
@@ -773,16 +818,16 @@ export default function ExpenseCreateScreen() {
                   {
                     backgroundColor: isSubmitDisabled
                       ? theme.backgroundSelected
-                      : '#0071e3',
+                      : theme.primary,
                   },
-                  pressed && !isSubmitting && styles.pressed,
+                  pressed && !isSubmitDisabled && styles.pressed,
                 ]}
               >
                 <ThemedText
                   type="smallBold"
                   style={[
                     styles.buttonText,
-                    { color: isSubmitDisabled ? theme.textSecondary : '#fff' },
+                    { color: isSubmitDisabled ? theme.textDisabled : '#fff' },
                   ]}
                 >
                   {isSubmitting ? '登録中...' : '支出を登録する'}
@@ -793,11 +838,13 @@ export default function ExpenseCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
-                  { borderColor: theme.border },
+                  { borderColor: theme.primary },
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold">戻る</ThemedText>
+                <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                  戻る
+                </ThemedText>
               </Pressable>
             </View>
           </ThemedView>
@@ -917,13 +964,20 @@ const styles = StyleSheet.create({
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   form: {
     gap: Spacing.three,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
   },
   field: {
     gap: Spacing.one,
@@ -931,14 +985,14 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
   },
   textArea: {
     minHeight: 96,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
@@ -953,7 +1007,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
@@ -961,7 +1015,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   errorText: {
-    color: '#dc2626',
+    color: '#e01e5a',
   },
   memberList: {
     gap: Spacing.two,
@@ -973,19 +1027,19 @@ const styles = StyleSheet.create({
   },
   receiptInfo: {
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.two,
   },
   receiptPreview: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
   },
   clearReceiptButton: {
     minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     borderWidth: 1,
     paddingHorizontal: Spacing.three,
   },
@@ -995,7 +1049,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
     borderWidth: 1,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.two,
   },
   memberMain: {
@@ -1018,14 +1072,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     borderWidth: 1,
     paddingHorizontal: Spacing.three,
   },
@@ -1033,7 +1087,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import {
   fetchRoomById,
   fetchRoomMembers,
@@ -97,22 +97,24 @@ export default function RoomMembersScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.secondaryButton,
-                    { borderColor: theme.border },
+                    { borderColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText type="smallBold">room一覧へ</ThemedText>
+                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                    room一覧へ
+                  </ThemedText>
                 </Pressable>
               </Link>
               <Link href={'/rooms/new' as any} asChild>
                 <Pressable
                   style={({ pressed }) => [
-                    styles.button,
-                    { backgroundColor: theme.primary },
+                    styles.secondaryButton,
+                    { borderColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText type="smallBold" style={styles.buttonText}>
+                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
                     roomを作成する
                   </ThemedText>
                 </Pressable>
@@ -135,7 +137,10 @@ export default function RoomMembersScreen() {
             </View>
 
             {isLoading ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">読み込み中</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   roomの詳細と参加者を取得しています。
@@ -144,7 +149,10 @@ export default function RoomMembersScreen() {
             ) : null}
 
             {error ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">取得に失敗しました</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {error}
@@ -153,7 +161,10 @@ export default function RoomMembersScreen() {
             ) : null}
 
             {room ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">{room.name}</ThemedText>
                 <ThemedText themeColor="textSecondary">
                   {room.description || '説明はまだ登録されていません。'}
@@ -166,7 +177,10 @@ export default function RoomMembersScreen() {
             ) : null}
 
             {!isLoading && !error ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <View style={styles.sectionHeader}>
                   <ThemedText type="smallBold">参加者</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -284,14 +298,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },
@@ -303,14 +317,17 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: Spacing.two,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   metaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.three,
   },
   metaItem: {
+    minWidth: 120,
     flex: 1,
     gap: Spacing.one,
   },
@@ -325,7 +342,7 @@ const styles = StyleSheet.create({
   },
   memberRow: {
     gap: Spacing.two,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.two,
     borderWidth: 1,
   },
@@ -339,7 +356,7 @@ const styles = StyleSheet.create({
   },
   badge: {
     alignSelf: 'flex-start',
-    borderRadius: 999,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.two,
     paddingVertical: 2,
   },

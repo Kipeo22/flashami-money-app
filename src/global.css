@@ -2,10 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: AdjustedYuGothic;
+  font-weight: 400;
+  src: local('Yu Gothic Medium');
+}
+
+@font-face {
+  font-family: AdjustedYuGothic;
+  font-weight: 700;
+  src: local('Yu Gothic Bold');
+}
+
 :root {
   --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
-    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+    AdjustedYuGothic, 'Yu Gothic', YuGothic, 'Hiragino Sans', sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono,
     Courier New, monospace;

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchExpenseById, type ExpenseRecord } from '@/lib/expenses';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -106,7 +106,10 @@ export default function ExpenseDetailScreen() {
 
             {expense ? (
               <>
-                <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.card, { borderColor: theme.border }]}
+                >
                   <DetailRow label="種別" value={formatExpenseType(expense)} />
                   <DetailRow label="金額" value={`${expense.amount}円`} />
                   <DetailRow label="カテゴリ" value={expense.category} />
@@ -115,7 +118,10 @@ export default function ExpenseDetailScreen() {
                   <DetailRow label="ステータス" value={expense.status} />
                 </ThemedView>
 
-                <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.card, { borderColor: theme.border }]}
+                >
                   <ThemedText type="smallBold">レシート画像</ThemedText>
                   {expense.receipt_image_url ? (
                     <Image
@@ -140,11 +146,13 @@ export default function ExpenseDetailScreen() {
               onPress={() => router.back()}
               style={({ pressed }) => [
                 styles.ghostButton,
-                { borderColor: theme.border },
+                { borderColor: theme.primary },
                 pressed && styles.pressed,
               ]}
             >
-              <ThemedText type="smallBold">戻る</ThemedText>
+              <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                戻る
+              </ThemedText>
             </Pressable>
           </ThemedView>
         </ScrollView>
@@ -159,7 +167,9 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="smallBold">{value || '-'}</ThemedText>
+      <ThemedText type="smallBold" style={styles.detailValue}>
+        {value || '-'}
+      </ThemedText>
     </View>
   );
 }
@@ -192,21 +202,29 @@ const styles = StyleSheet.create({
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   card: {
     gap: Spacing.three,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   detailRow: {
-    gap: Spacing.one,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+  },
+  detailValue: {
+    flex: 1,
+    textAlign: 'right',
   },
   receiptImage: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
   },
   noReceipt: {
     gap: Spacing.one,
@@ -215,7 +233,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },

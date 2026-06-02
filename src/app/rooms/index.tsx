@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { signOut } from '@/lib/auth';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
@@ -99,8 +99,51 @@ export default function RoomsScreen() {
               </ThemedText>
             </ThemedView>
 
+            <ThemedView style={styles.actions}>
+              <Link href={'/rooms/new' as any} asChild>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.button,
+                    { backgroundColor: theme.primary },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText type="smallBold" style={styles.buttonText}>
+                    roomを作成する
+                  </ThemedText>
+                </Pressable>
+              </Link>
+
+              <Pressable
+                disabled={isSigningOut}
+                onPress={handleSignOut}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  {
+                    borderColor: theme.primary,
+                    backgroundColor: isSigningOut
+                      ? theme.backgroundSelected
+                      : 'transparent',
+                  },
+                  pressed && !isSigningOut && styles.pressed,
+                ]}
+              >
+                <ThemedText
+                  type="smallBold"
+                  style={{
+                    color: isSigningOut ? theme.textDisabled : theme.primary,
+                  }}
+                >
+                  {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
+                </ThemedText>
+              </Pressable>
+            </ThemedView>
+
             {isLoading ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">読み込み中</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   ログイン中ユーザーに紐づくroomを取得しています。
@@ -109,7 +152,10 @@ export default function RoomsScreen() {
             ) : null}
 
             {error ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">取得に失敗しました</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   {error}
@@ -118,7 +164,10 @@ export default function RoomsScreen() {
             ) : null}
 
             {!isLoading && !error && rooms.length === 0 ? (
-              <ThemedView type="backgroundElement" style={styles.card}>
+              <ThemedView
+                type="backgroundElement"
+                style={[styles.card, { borderColor: theme.border }]}
+              >
                 <ThemedText type="smallBold">
                   参加中のroomはありません
                 </ThemedText>
@@ -134,7 +183,7 @@ export default function RoomsScreen() {
                   <ThemedView
                     key={room.id}
                     type="backgroundElement"
-                    style={styles.roomCard}
+                    style={[styles.roomCard, { borderColor: theme.border }]}
                   >
                     <View style={styles.roomCardHeader}>
                       <ThemedText type="smallBold">{room.name}</ThemedText>
@@ -176,11 +225,16 @@ export default function RoomsScreen() {
                           style={({ pressed }) => [
                             styles.secondaryButton,
                             styles.roomActionButton,
-                            { borderColor: theme.border },
+                            { borderColor: theme.primary },
                             pressed && styles.pressed,
                           ]}
                         >
-                          <ThemedText type="smallBold">参加者を見る</ThemedText>
+                          <ThemedText
+                            type="smallBold"
+                            style={{ color: theme.primary }}
+                          >
+                            参加者を見る
+                          </ThemedText>
                         </Pressable>
                       </Link>
                     </View>
@@ -188,46 +242,6 @@ export default function RoomsScreen() {
                 ))}
               </View>
             ) : null}
-
-            <ThemedView style={styles.actions}>
-              <Link href={'/rooms/new' as any} asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.button,
-                    { backgroundColor: theme.primary },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={styles.buttonText}>
-                    roomを作成する
-                  </ThemedText>
-                </Pressable>
-              </Link>
-
-              <Pressable
-                disabled={isSigningOut}
-                onPress={handleSignOut}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: isSigningOut
-                      ? theme.backgroundSelected
-                      : 'transparent',
-                  },
-                  pressed && !isSigningOut && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="smallBold"
-                  style={{
-                    color: isSigningOut ? theme.textSecondary : theme.text,
-                  }}
-                >
-                  {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
@@ -278,7 +292,8 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: Spacing.two,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   roomList: {
@@ -286,7 +301,8 @@ const styles = StyleSheet.create({
   },
   roomCard: {
     gap: Spacing.two,
-    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
     padding: Spacing.three,
   },
   roomCardHeader: {
@@ -296,9 +312,11 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
   metaItem: {
+    minWidth: 120,
     flex: 1,
     gap: Spacing.one,
   },
@@ -317,14 +335,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },
