@@ -3,6 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -72,6 +73,7 @@ const defaultValues = {
   expenseType: 'common',
   noReceiptNote: '',
   noReceiptReason: '',
+  receiptImageBase64: '',
   paidAt: '',
   receiptImageUrl: '',
   selectedMemberIds: [],
@@ -105,13 +107,14 @@ const expenseFormSchema = z
         (value) => isValidIsoDate(value),
         '支払日は YYYY-MM-DD 形式で入力してください。',
       ),
+    receiptImageBase64: z.string(),
     receiptImageUrl: z.string(),
     selectedMemberIds: z.array(z.string()),
     splitType: z.enum(['equal', 'custom']),
   })
   .superRefine((value, context) => {
     const amount = parsePositiveInteger(value.amountText);
-    const hasReceiptImage = value.receiptImageUrl.trim().length > 0;
+    const hasReceiptImage = value.receiptImageBase64.trim().length > 0;
 
     if (!hasReceiptImage && !value.noReceiptReason.trim()) {
       context.addIssue({
@@ -295,13 +298,22 @@ export default function ExpenseCreateScreen() {
     setFormValue('customShares', nextCustomShares);
   };
 
-  const setReceiptImageUrl = (uri: string) => {
-    setFormValue('receiptImageUrl', uri);
-
-    if (uri) {
-      setFormValue('noReceiptReason', '');
-      setFormValue('noReceiptNote', '');
+  const setReceiptImage = (asset: ImagePicker.ImagePickerAsset) => {
+    if (!asset.base64) {
+      setFeedback('レシート画像データを読み込めませんでした。');
+      return;
     }
+
+    setFormValue('receiptImageUrl', asset.uri);
+    setFormValue('receiptImageBase64', asset.base64);
+    setFormValue('noReceiptReason', '');
+    setFormValue('noReceiptNote', '');
+    setFeedback(null);
+  };
+
+  const clearReceiptImage = () => {
+    setFormValue('receiptImageUrl', '');
+    setFormValue('receiptImageBase64', '');
   };
 
   const pickReceiptFromLibrary = async () => {
@@ -315,13 +327,16 @@ export default function ExpenseCreateScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: false,
+      base64: true,
       mediaTypes: ['images'],
       quality: 0.8,
     });
 
     if (!result.canceled) {
-      setReceiptImageUrl(result.assets[0]?.uri ?? '');
-      setFeedback(null);
+      const asset = result.assets[0];
+      if (asset) {
+        setReceiptImage(asset);
+      }
     }
   };
 
@@ -335,13 +350,16 @@ export default function ExpenseCreateScreen() {
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: false,
+      base64: true,
       mediaTypes: ['images'],
       quality: 0.8,
     });
 
     if (!result.canceled) {
-      setReceiptImageUrl(result.assets[0]?.uri ?? '');
-      setFeedback(null);
+      const asset = result.assets[0];
+      if (asset) {
+        setReceiptImage(asset);
+      }
     }
   };
 
@@ -360,7 +378,7 @@ export default function ExpenseCreateScreen() {
     setFeedback(null);
 
     try {
-      await createExpenseWithTargets({
+      const expense = await createExpenseWithTargets({
         amount,
         category: values.category,
         description: values.description,
@@ -368,6 +386,7 @@ export default function ExpenseCreateScreen() {
         noReceiptNote: values.noReceiptNote,
         noReceiptReason: values.noReceiptReason,
         paidAt: values.paidAt,
+        receiptImageBase64: values.receiptImageBase64,
         receiptImageUrl: values.receiptImageUrl,
         roomId: resolvedRoomId,
         splitType: values.expenseType === 'personal' ? values.splitType : null,
@@ -375,7 +394,9 @@ export default function ExpenseCreateScreen() {
       });
 
       reset(defaultValues);
-      setFeedback('支出を登録しました。');
+      router.replace(
+        `/rooms/${resolvedRoomId}/expenses/${expense.id}` as never,
+      );
     } catch (error) {
       setFeedback(
         error instanceof Error ? error.message : '支出の登録に失敗しました。',
@@ -550,12 +571,16 @@ export default function ExpenseCreateScreen() {
                     type="backgroundElement"
                     style={styles.receiptInfo}
                   >
+                    <Image
+                      source={{ uri: receiptImageUrl }}
+                      style={styles.receiptPreview}
+                    />
                     <ThemedText type="smallBold">選択済み</ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       {receiptImageUrl}
                     </ThemedText>
                     <Pressable
-                      onPress={() => setReceiptImageUrl('')}
+                      onPress={clearReceiptImage}
                       style={({ pressed }) => [
                         styles.clearReceiptButton,
                         pressed && styles.pressed,
@@ -931,6 +956,11 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     borderRadius: Spacing.two,
     padding: Spacing.two,
+  },
+  receiptPreview: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: Spacing.two,
   },
   clearReceiptButton: {
     minHeight: 40,
