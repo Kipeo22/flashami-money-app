@@ -21,6 +21,12 @@ export type RoomMemberRecord = {
   status: RoomMemberStatus;
 };
 
+export type UserRoomRecord = RoomRecord & {
+  expense_count: number;
+  member_role: RoomMemberRole;
+  member_status: RoomMemberStatus;
+};
+
 type CreateRoomInput = {
   description: string;
   endDate: string;
@@ -105,6 +111,25 @@ export async function requireAuthenticatedUser() {
   return { ...user, email };
 }
 
+export function formatSupabaseError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return '処理に失敗しました。';
+  }
+
+  const details =
+    'details' in error && typeof error.details === 'string'
+      ? error.details
+      : null;
+  const hint =
+    'hint' in error && typeof error.hint === 'string' ? error.hint : null;
+  const code =
+    'code' in error && typeof error.code === 'string' ? error.code : null;
+
+  return [error.message, details, hint, code ? `code: ${code}` : null]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export async function createRoomWithMembers(input: CreateRoomInput) {
   const validationError = validateRoomInput(input);
   if (validationError) {
@@ -127,7 +152,7 @@ export async function createRoomWithMembers(input: CreateRoomInput) {
     .single<RoomRecord>();
 
   if (roomError) {
-    throw roomError;
+    throw new Error(formatSupabaseError(roomError));
   }
 
   const memberEmails = dedupeMemberEmails(input.memberEmails, user.email);
@@ -162,10 +187,136 @@ export async function createRoomWithMembers(input: CreateRoomInput) {
     .insert(membersToInsert);
 
   if (membersError) {
-    throw membersError;
+    await supabase.from('rooms').delete().eq('id', room.id);
+    throw new Error(formatSupabaseError(membersError));
   }
 
   return room;
+}
+
+export async function ensureCurrentUserRoomMembership(roomId: string) {
+  const supabase = getSupabaseClient();
+  const user = await requireAuthenticatedUser();
+  const email = normalizeEmail(user.email);
+
+  const { data: memberships, error: membershipsError } = await supabase
+    .from('room_members')
+    .select('id, room_id, email, user_id, display_name, role, status')
+    .eq('room_id', roomId)
+    .eq('email', email)
+    .returns<RoomMemberRecord[]>();
+
+  if (membershipsError) {
+    throw new Error(formatSupabaseError(membershipsError));
+  }
+
+  const membership = memberships[0];
+  if (!membership) {
+    throw new Error('このroomの参加者として登録されていません。');
+  }
+
+  if (membership.user_id === user.id && membership.status === 'joined') {
+    return membership;
+  }
+
+  const { data: updatedMembership, error: updateError } = await supabase
+    .from('room_members')
+    .update({
+      user_id: user.id,
+      status: 'joined',
+    })
+    .eq('id', membership.id)
+    .select('id, room_id, email, user_id, display_name, role, status')
+    .single<RoomMemberRecord>();
+
+  if (updateError) {
+    throw new Error(formatSupabaseError(updateError));
+  }
+
+  return updatedMembership;
+}
+
+export async function fetchCurrentUserRooms() {
+  const supabase = getSupabaseClient();
+  const user = await requireAuthenticatedUser();
+  const email = normalizeEmail(user.email);
+
+  const { error: joinError } = await supabase
+    .from('room_members')
+    .update({
+      user_id: user.id,
+      status: 'joined',
+    })
+    .eq('email', email)
+    .is('user_id', null);
+
+  if (joinError) {
+    throw new Error(formatSupabaseError(joinError));
+  }
+
+  const { data: memberships, error: membershipsError } = await supabase
+    .from('room_members')
+    .select('room_id, role, status')
+    .eq('email', email)
+    .returns<Pick<RoomMemberRecord, 'room_id' | 'role' | 'status'>[]>();
+
+  if (membershipsError) {
+    throw new Error(formatSupabaseError(membershipsError));
+  }
+
+  if (memberships.length === 0) {
+    return [];
+  }
+
+  const roomIds = memberships.map((membership) => membership.room_id);
+  const membershipByRoomId = new Map(
+    memberships.map((membership) => [membership.room_id, membership]),
+  );
+
+  const { data: rooms, error: roomsError } = await supabase
+    .from('rooms')
+    .select('id, name, description, start_date, end_date')
+    .in('id', roomIds)
+    .returns<RoomRecord[]>();
+
+  if (roomsError) {
+    throw new Error(formatSupabaseError(roomsError));
+  }
+
+  const { data: expenses, error: expensesError } = await supabase
+    .from('expenses')
+    .select('room_id')
+    .in('room_id', roomIds)
+    .returns<{ room_id: string }[]>();
+
+  if (expensesError) {
+    throw new Error(formatSupabaseError(expensesError));
+  }
+
+  const expenseCountByRoomId = new Map<string, number>();
+  for (const expense of expenses) {
+    expenseCountByRoomId.set(
+      expense.room_id,
+      (expenseCountByRoomId.get(expense.room_id) ?? 0) + 1,
+    );
+  }
+
+  return rooms
+    .map((room) => {
+      const membership = membershipByRoomId.get(room.id);
+
+      return {
+        ...room,
+        expense_count: expenseCountByRoomId.get(room.id) ?? 0,
+        member_role: membership?.role ?? 'member',
+        member_status: membership?.status ?? 'invited',
+      } satisfies UserRoomRecord;
+    })
+    .sort((firstRoom, secondRoom) =>
+      firstRoom.start_date && secondRoom.start_date
+        ? firstRoom.start_date.localeCompare(secondRoom.start_date)
+        : firstRoom.name.localeCompare(secondRoom.name),
+    );
 }
 
 export async function fetchRoomById(roomId: string) {
@@ -177,7 +328,7 @@ export async function fetchRoomById(roomId: string) {
     .single<RoomRecord>();
 
   if (error) {
-    throw error;
+    throw new Error(formatSupabaseError(error));
   }
 
   return data;
@@ -193,7 +344,7 @@ export async function fetchRoomMembers(roomId: string) {
     .returns<RoomMemberRecord[]>();
 
   if (error) {
-    throw error;
+    throw new Error(formatSupabaseError(error));
   }
 
   return data;

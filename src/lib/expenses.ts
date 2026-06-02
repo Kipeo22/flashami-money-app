@@ -1,5 +1,7 @@
 import {
+  ensureCurrentUserRoomMembership,
   fetchRoomMembers,
+  formatSupabaseError,
   isValidIsoDate,
   requireAuthenticatedUser,
   type RoomMemberRecord,
@@ -94,6 +96,17 @@ export function validateExpenseInput(input: CreateExpenseInput) {
     ) {
       return '金額指定の場合は対象者ごとの金額を1円以上の整数で入力してください。';
     }
+
+    if (input.splitType === 'custom') {
+      const targetTotal = input.targets.reduce(
+        (total, target) => total + (target.amountShare ?? 0),
+        0,
+      );
+
+      if (targetTotal !== input.amount) {
+        return '金額指定の場合は対象者ごとの金額合計を支出金額と一致させてください。';
+      }
+    }
   }
 
   return null;
@@ -104,6 +117,8 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
   if (validationError) {
     throw new Error(validationError);
   }
+
+  await ensureCurrentUserRoomMembership(input.roomId);
 
   const supabase = getSupabaseClient();
   const user = await requireAuthenticatedUser();
@@ -131,7 +146,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
     .single<ExpenseRecord>();
 
   if (expenseError) {
-    throw expenseError;
+    throw new Error(formatSupabaseError(expenseError));
   }
 
   if (input.expenseType !== 'personal') {
@@ -152,12 +167,13 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
 
   if (targetsError) {
     await supabase.from('expenses').delete().eq('id', expense.id);
-    throw targetsError;
+    throw new Error(formatSupabaseError(targetsError));
   }
 
   return expense;
 }
 
 export async function fetchExpenseTargetCandidates(roomId: string) {
+  await ensureCurrentUserRoomMembership(roomId);
   return fetchRoomMembers(roomId);
 }

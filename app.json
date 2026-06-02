@@ -36,6 +36,14 @@
           }
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "レシート画像を選択するために写真ライブラリへアクセスします。",
+          "cameraPermission": "レシート画像を撮影するためにカメラへアクセスします。",
+          "microphonePermission": false
+        }
+      ],
       "expo-status-bar"
     ],
     "experiments": {

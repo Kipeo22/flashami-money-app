@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -32,6 +33,16 @@ const expenseTypeOptions: { label: string; value: ExpenseType }[] = [
 const splitTypeOptions: { label: string; value: SplitType }[] = [
   { label: '均等', value: 'equal' },
   { label: '金額指定', value: 'custom' },
+];
+
+const categoryOptions = [
+  '宿泊費',
+  '交通費',
+  '食費',
+  '会場費',
+  '備品代',
+  '観光費',
+  'その他',
 ];
 
 const noReceiptReasons = [
@@ -121,6 +132,49 @@ export default function ExpenseCreateScreen() {
         ? current.filter((id) => id !== memberId)
         : [...current, memberId],
     );
+  };
+
+  const pickReceiptFromLibrary = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      setFeedback('画像ライブラリへのアクセス許可が必要です。');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled) {
+      setReceiptImageUrl(result.assets[0]?.uri ?? '');
+      setNoReceiptReason('');
+      setNoReceiptNote('');
+    }
+  };
+
+  const takeReceiptPhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      setFeedback('カメラへのアクセス許可が必要です。');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled) {
+      setReceiptImageUrl(result.assets[0]?.uri ?? '');
+      setNoReceiptReason('');
+      setNoReceiptNote('');
+    }
   };
 
   const handleSubmit = async () => {
@@ -229,19 +283,16 @@ export default function ExpenseCreateScreen() {
               </Field>
 
               <Field label="カテゴリ">
-                <TextInput
-                  placeholder="宿泊費"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: theme.backgroundSelected,
-                      color: theme.text,
-                    },
-                  ]}
-                  value={category}
-                  onChangeText={setCategory}
-                />
+                <OptionRow>
+                  {categoryOptions.map((option) => (
+                    <OptionButton
+                      key={option}
+                      isSelected={category === option}
+                      label={option}
+                      onPress={() => setCategory(option)}
+                    />
+                  ))}
+                </OptionRow>
               </Field>
 
               <Field label="内容">
@@ -280,21 +331,47 @@ export default function ExpenseCreateScreen() {
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.form}>
-              <Field label="レシート画像URL/パス">
-                <TextInput
-                  autoCapitalize="none"
-                  placeholder="receipts/room-id/expense-id.jpg"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: theme.backgroundSelected,
-                      color: theme.text,
-                    },
-                  ]}
-                  value={receiptImageUrl}
-                  onChangeText={setReceiptImageUrl}
-                />
+              <Field label="レシート画像">
+                <View style={styles.receiptActions}>
+                  <Pressable
+                    onPress={pickReceiptFromLibrary}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText type="smallBold">画像を選択</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    onPress={takeReceiptPhoto}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText type="smallBold">撮影する</ThemedText>
+                  </Pressable>
+                </View>
+                {receiptImageUrl ? (
+                  <ThemedView
+                    type="backgroundElement"
+                    style={styles.receiptInfo}
+                  >
+                    <ThemedText type="smallBold">選択済み</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {receiptImageUrl}
+                    </ThemedText>
+                    <Pressable
+                      onPress={() => setReceiptImageUrl('')}
+                      style={({ pressed }) => [
+                        styles.clearReceiptButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <ThemedText type="smallBold">画像を削除</ThemedText>
+                    </Pressable>
+                  </ThemedView>
+                ) : null}
               </Field>
 
               {!receiptImageUrl.trim() ? (
@@ -599,6 +676,25 @@ const styles = StyleSheet.create({
   memberList: {
     gap: Spacing.two,
   },
+  receiptActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  receiptInfo: {
+    gap: Spacing.one,
+    borderRadius: Spacing.two,
+    padding: Spacing.two,
+  },
+  clearReceiptButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#a3a3a3',
+    paddingHorizontal: Spacing.three,
+  },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -634,6 +730,15 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  secondaryButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#a3a3a3',
+    paddingHorizontal: Spacing.three,
   },
   ghostButton: {
     minHeight: 48,

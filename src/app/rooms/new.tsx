@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -21,7 +21,7 @@ import {
   isValidIsoDate,
   normalizeEmail,
 } from '@/lib/rooms';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function RoomCreateScreen() {
@@ -36,6 +36,29 @@ export default function RoomCreateScreen() {
   const [memberEmails, setMemberEmails] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function requireLogin() {
+      if (!isSupabaseConfigured) {
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      const { data } = await supabase.auth.getUser();
+
+      if (active && !data.user) {
+        router.replace('/login');
+      }
+    }
+
+    requireLogin();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   const addEmail = () => {
     const nextEmail = normalizeEmail(emailInput);

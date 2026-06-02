@@ -1,10 +1,20 @@
 import '@/global.css';
 
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as Linking from 'expo-linking';
+import {
+  DarkTheme,
+  DefaultTheme,
+  Stack,
+  ThemeProvider,
+  useRouter,
+} from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { restoreSessionFromUrl } from '@/lib/auth';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -26,7 +36,40 @@ export default function RootLayout() {
           options={{ title: '支出登録' }}
         />
       </Stack>
+      <AuthLinkHandler />
       <StatusBar style="auto" />
     </ThemeProvider>
   );
+}
+
+function AuthLinkHandler() {
+  const url = Linking.useLinkingURL();
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+
+    async function restoreSession() {
+      if (!url || !isSupabaseConfigured) {
+        return;
+      }
+
+      try {
+        const didRestoreSession = await restoreSessionFromUrl(url);
+        if (active && didRestoreSession) {
+          router.replace('/rooms');
+        }
+      } catch {
+        // The login screen also reports authentication errors after explicit actions.
+      }
+    }
+
+    restoreSession();
+
+    return () => {
+      active = false;
+    };
+  }, [router, url]);
+
+  return null;
 }

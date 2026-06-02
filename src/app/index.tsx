@@ -52,6 +52,16 @@ export default function HomeScreen() {
                   <ThemedText type="smallBold">Room一覧へ</ThemedText>
                 </Pressable>
               </Link>
+              <Link href={'/rooms/new' as any} asChild>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText type="smallBold">roomを作成する</ThemedText>
+                </Pressable>
+              </Link>
             </ThemedView>
           </ThemedView>
         </ScrollView>

@@ -1,12 +1,90 @@
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Link, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { signOut } from '@/lib/auth';
+import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function RoomsScreen() {
+  const router = useRouter();
+  const [rooms, setRooms] = useState<UserRoomRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRooms() {
+      if (!isSupabaseConfigured) {
+        setError(
+          'Supabase が未設定です。`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。',
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const roomData = await fetchCurrentUserRooms();
+        if (active) {
+          setRooms(roomData);
+        }
+      } catch (caughtError) {
+        if (!active) {
+          return;
+        }
+
+        const message =
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'room一覧の取得に失敗しました。';
+
+        if (message.includes('ログインが必要')) {
+          router.replace('/login');
+          return;
+        }
+
+        setError(message);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadRooms();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    setError(null);
+
+    try {
+      await signOut();
+      router.replace('/login');
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'ログアウトに失敗しました。',
+      );
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -19,14 +97,93 @@ export default function RoomsScreen() {
               </ThemedText>
             </ThemedView>
 
-            <ThemedView type="backgroundElement" style={styles.emptyState}>
-              <ThemedText type="smallBold">
-                まだroomは登録されていません
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                まずはroomを作成して、参加者のメールアドレスを追加してください。
-              </ThemedText>
-            </ThemedView>
+            {isLoading ? (
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="smallBold">読み込み中</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  ログイン中ユーザーに紐づくroomを取得しています。
+                </ThemedText>
+              </ThemedView>
+            ) : null}
+
+            {error ? (
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="smallBold">取得に失敗しました</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {error}
+                </ThemedText>
+              </ThemedView>
+            ) : null}
+
+            {!isLoading && !error && rooms.length === 0 ? (
+              <ThemedView type="backgroundElement" style={styles.card}>
+                <ThemedText type="smallBold">
+                  参加中のroomはありません
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  運営者に登録済みメールアドレスを確認するか、新しいroomを作成してください。
+                </ThemedText>
+              </ThemedView>
+            ) : null}
+
+            {!isLoading && rooms.length > 0 ? (
+              <View style={styles.roomList}>
+                {rooms.map((room) => (
+                  <ThemedView
+                    key={room.id}
+                    type="backgroundElement"
+                    style={styles.roomCard}
+                  >
+                    <View style={styles.roomCardHeader}>
+                      <ThemedText type="smallBold">{room.name}</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {room.expense_count}件
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {room.description || '説明はまだ登録されていません。'}
+                    </ThemedText>
+                    <View style={styles.metaRow}>
+                      <Meta label="期間" value={formatRoomPeriod(room)} />
+                      <Meta label="ロール" value={room.member_role} />
+                      <Meta label="状態" value={room.member_status} />
+                    </View>
+                    <View style={styles.roomActions}>
+                      <Link
+                        href={`/rooms/${room.id}/expenses/new` as any}
+                        asChild
+                      >
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.button,
+                            styles.roomActionButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <ThemedText
+                            type="smallBold"
+                            style={styles.buttonText}
+                          >
+                            支出を登録する
+                          </ThemedText>
+                        </Pressable>
+                      </Link>
+                      <Link href={`/rooms/${room.id}/members` as any} asChild>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.secondaryButton,
+                            styles.roomActionButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <ThemedText type="smallBold">参加者を見る</ThemedText>
+                        </Pressable>
+                      </Link>
+                    </View>
+                  </ThemedView>
+                ))}
+              </View>
+            ) : null}
 
             <ThemedView style={styles.actions}>
               <Link href={'/rooms/new' as any} asChild>
@@ -42,22 +199,44 @@ export default function RoomsScreen() {
                 </Pressable>
               </Link>
 
-              <Link href="/login" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold">ログインへ</ThemedText>
-                </Pressable>
-              </Link>
+              <Pressable
+                disabled={isSigningOut}
+                onPress={handleSignOut}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  isSigningOut && styles.buttonDisabled,
+                  pressed && !isSigningOut && styles.pressed,
+                ]}
+              >
+                <ThemedText type="smallBold">
+                  {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
+                </ThemedText>
+              </Pressable>
             </ThemedView>
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
+}
+
+function Meta({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metaItem}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold">{value}</ThemedText>
+    </View>
+  );
+}
+
+function formatRoomPeriod(room: UserRoomRecord) {
+  if (!room.start_date && !room.end_date) {
+    return '-';
+  }
+
+  return `${room.start_date ?? '-'} - ${room.end_date ?? '-'}`;
 }
 
 const styles = StyleSheet.create({
@@ -73,7 +252,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   container: {
     width: '100%',
@@ -83,10 +261,39 @@ const styles = StyleSheet.create({
   header: {
     gap: Spacing.two,
   },
-  emptyState: {
+  card: {
     gap: Spacing.two,
     borderRadius: Spacing.two,
     padding: Spacing.three,
+  },
+  roomList: {
+    gap: Spacing.two,
+  },
+  roomCard: {
+    gap: Spacing.two,
+    borderRadius: Spacing.two,
+    padding: Spacing.three,
+  },
+  roomCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  metaItem: {
+    flex: 1,
+    gap: Spacing.one,
+  },
+  roomActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  roomActionButton: {
+    flexGrow: 1,
   },
   actions: {
     gap: Spacing.two,
@@ -107,6 +314,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
     borderColor: '#a3a3a3',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#ffffff',
