@@ -49,7 +49,9 @@ export default function RoomCreateScreen() {
       return;
     }
 
-    setMemberEmails((current) => dedupeMemberEmails([...current, nextEmail], ''));
+    setMemberEmails((current) =>
+      dedupeMemberEmails([...current, nextEmail], ''),
+    );
     setEmailInput('');
     setFeedback(null);
   };
@@ -138,7 +140,10 @@ export default function RoomCreateScreen() {
                   placeholderTextColor={theme.textSecondary}
                   style={[
                     styles.input,
-                    { borderColor: theme.backgroundSelected, color: theme.text },
+                    {
+                      borderColor: theme.backgroundSelected,
+                      color: theme.text,
+                    },
                   ]}
                   value={name}
                   onChangeText={setName}
@@ -152,7 +157,10 @@ export default function RoomCreateScreen() {
                   placeholderTextColor={theme.textSecondary}
                   style={[
                     styles.textArea,
-                    { borderColor: theme.backgroundSelected, color: theme.text },
+                    {
+                      borderColor: theme.backgroundSelected,
+                      color: theme.text,
+                    },
                   ]}
                   value={description}
                   onChangeText={setDescription}
@@ -168,7 +176,10 @@ export default function RoomCreateScreen() {
                     placeholderTextColor={theme.textSecondary}
                     style={[
                       styles.input,
-                      { borderColor: theme.backgroundSelected, color: theme.text },
+                      {
+                        borderColor: theme.backgroundSelected,
+                        color: theme.text,
+                      },
                     ]}
                     value={startDate}
                     onChangeText={setStartDate}
@@ -182,7 +193,10 @@ export default function RoomCreateScreen() {
                     placeholderTextColor={theme.textSecondary}
                     style={[
                       styles.input,
-                      { borderColor: theme.backgroundSelected, color: theme.text },
+                      {
+                        borderColor: theme.backgroundSelected,
+                        color: theme.text,
+                      },
                     ]}
                     value={endDate}
                     onChangeText={setEndDate}
@@ -194,7 +208,8 @@ export default function RoomCreateScreen() {
             <ThemedView type="backgroundElement" style={styles.form}>
               <ThemedText type="smallBold">参加者メールアドレス</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                追加されたメールアドレスは room 作成後に参加者として登録されます。
+                追加されたメールアドレスは room
+                作成後に参加者として登録されます。
               </ThemedText>
 
               <View style={styles.emailComposer}>
@@ -208,7 +223,10 @@ export default function RoomCreateScreen() {
                   style={[
                     styles.input,
                     styles.emailInput,
-                    { borderColor: theme.backgroundSelected, color: theme.text },
+                    {
+                      borderColor: theme.backgroundSelected,
+                      color: theme.text,
+                    },
                   ]}
                   value={emailInput}
                   onChangeText={setEmailInput}
@@ -250,7 +268,10 @@ export default function RoomCreateScreen() {
                           pressed && styles.pressed,
                         ]}
                       >
-                        <ThemedText type="smallBold" style={styles.chipRemoveText}>
+                        <ThemedText
+                          type="smallBold"
+                          style={styles.chipRemoveText}
+                        >
                           削除
                         </ThemedText>
                       </Pressable>
@@ -277,7 +298,10 @@ export default function RoomCreateScreen() {
 
               <Pressable
                 onPress={() => router.back()}
-                style={({ pressed }) => [styles.ghostButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.ghostButton,
+                  pressed && styles.pressed,
+                ]}
               >
                 <ThemedText type="smallBold">戻る</ThemedText>
               </Pressable>

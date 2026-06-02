@@ -115,6 +115,20 @@ export default function RoomMembersScreen() {
                   </ThemedText>
                 </Pressable>
               </Link>
+              {roomId && !Array.isArray(roomId) ? (
+                <Link href={`/rooms/${roomId}/expenses/new` as any} asChild>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.button,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText type="smallBold" style={styles.buttonText}>
+                      支出を登録する
+                    </ThemedText>
+                  </Pressable>
+                </Link>
+              ) : null}
             </View>
 
             {isLoading ? (

@@ -6,6 +6,21 @@ import { AppState, Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const isWebServerRender =
+  Platform.OS === 'web' && typeof window === 'undefined';
+
+const memoryStorage = new Map<string, string>();
+const webServerStorage = {
+  getItem: (key: string) => Promise.resolve(memoryStorage.get(key) ?? null),
+  setItem: (key: string, value: string) => {
+    memoryStorage.set(key, value);
+    return Promise.resolve();
+  },
+  removeItem: (key: string) => {
+    memoryStorage.delete(key);
+    return Promise.resolve();
+  },
+};
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && supabasePublishableKey,
@@ -14,7 +29,7 @@ export const isSupabaseConfigured = Boolean(
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl as string, supabasePublishableKey as string, {
       auth: {
-        storage: AsyncStorage,
+        storage: isWebServerRender ? webServerStorage : AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,

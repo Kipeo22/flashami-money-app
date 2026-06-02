@@ -21,6 +21,10 @@ export default function RootLayout() {
           name="rooms/[roomId]/members"
           options={{ title: '参加者' }}
         />
+        <Stack.Screen
+          name="rooms/[roomId]/expenses/new"
+          options={{ title: '支出登録' }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

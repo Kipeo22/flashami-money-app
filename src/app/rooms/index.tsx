@@ -20,7 +20,9 @@ export default function RoomsScreen() {
             </ThemedView>
 
             <ThemedView type="backgroundElement" style={styles.emptyState}>
-              <ThemedText type="smallBold">まだroomは登録されていません</ThemedText>
+              <ThemedText type="smallBold">
+                まだroomは登録されていません
+              </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 まずはroomを作成して、参加者のメールアドレスを追加してください。
               </ThemedText>
