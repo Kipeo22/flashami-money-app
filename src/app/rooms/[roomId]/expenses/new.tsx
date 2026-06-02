@@ -203,6 +203,7 @@ export default function ExpenseCreateScreen() {
   const receiptImageUrl = useWatch({ control, name: 'receiptImageUrl' });
   const selectedMemberIds = useWatch({ control, name: 'selectedMemberIds' });
   const splitType = useWatch({ control, name: 'splitType' });
+  const isSubmitDisabled = isSubmitting || !isSupabaseConfigured;
 
   useEffect(() => {
     let active = true;
@@ -755,18 +756,27 @@ export default function ExpenseCreateScreen() {
 
             <View style={styles.actions}>
               <Pressable
-                disabled={isSubmitting || !isSupabaseConfigured}
+                disabled={isSubmitDisabled}
                 onPress={() =>
                   void handleSubmit(onValidSubmit, onInvalidSubmit)()
                 }
                 style={({ pressed }) => [
                   styles.button,
-                  (isSubmitting || !isSupabaseConfigured) &&
-                    styles.buttonDisabled,
+                  {
+                    backgroundColor: isSubmitDisabled
+                      ? theme.backgroundSelected
+                      : '#0071e3',
+                  },
                   pressed && !isSubmitting && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold" style={styles.buttonText}>
+                <ThemedText
+                  type="smallBold"
+                  style={[
+                    styles.buttonText,
+                    { color: isSubmitDisabled ? theme.textSecondary : '#fff' },
+                  ]}
+                >
                   {isSubmitting ? '登録中...' : '支出を登録する'}
                 </ThemedText>
               </Pressable>
@@ -1002,10 +1012,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   secondaryButton: {
     minHeight: 44,
