@@ -5,9 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
+  const theme = useTheme();
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -34,6 +37,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.primaryButton,
+                    { backgroundColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -46,6 +50,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.secondaryButton,
+                    { borderColor: theme.border },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -56,6 +61,7 @@ export default function HomeScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.secondaryButton,
+                    { borderColor: theme.border },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -92,8 +98,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   title: {
-    fontSize: 42,
-    lineHeight: 48,
+    fontSize: 44,
+    lineHeight: 50,
   },
   lead: {
     maxWidth: 520,
@@ -113,7 +119,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
   },
   primaryButtonText: {
     color: '#ffffff',
@@ -124,7 +129,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   pressed: {
     opacity: 0.72,

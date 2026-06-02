@@ -97,6 +97,7 @@ export default function RoomMembersScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.secondaryButton,
+                    { borderColor: theme.border },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -107,6 +108,7 @@ export default function RoomMembersScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.button,
+                    { backgroundColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -120,6 +122,7 @@ export default function RoomMembersScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       styles.button,
+                      { backgroundColor: theme.primary },
                       pressed && styles.pressed,
                     ]}
                   >
@@ -184,7 +187,7 @@ export default function RoomMembersScreen() {
                           styles.memberRow,
                           {
                             backgroundColor: theme.background,
-                            borderColor: theme.backgroundSelected,
+                            borderColor: theme.border,
                           },
                         ]}
                       >
@@ -283,7 +286,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
   },
   secondaryButton: {
     minHeight: 48,
@@ -292,7 +294,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   buttonText: {
     color: '#ffffff',

@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { getAuthRedirectUrl, sendMagicLink, verifyEmailOtp } from '@/lib/auth';
+import { sendMagicLink, verifyEmailOtp } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -121,7 +121,7 @@ export default function LoginScreen() {
               style={[
                 styles.input,
                 {
-                  borderColor: theme.backgroundSelected,
+                  borderColor: theme.border,
                   color: theme.text,
                   backgroundColor: theme.background,
                 },
@@ -132,19 +132,30 @@ export default function LoginScreen() {
               onPress={handleSendMagicLink}
               style={({ pressed }) => [
                 styles.button,
-                (isSubmitting || !isSupabaseConfigured) &&
-                  styles.buttonDisabled,
+                {
+                  backgroundColor:
+                    isSubmitting || !isSupabaseConfigured
+                      ? theme.backgroundSelected
+                      : theme.primary,
+                },
                 pressed && styles.pressed,
               ]}
             >
-              <ThemedText type="smallBold" style={styles.buttonText}>
+              <ThemedText
+                type="smallBold"
+                style={[
+                  styles.buttonText,
+                  {
+                    color:
+                      isSubmitting || !isSupabaseConfigured
+                        ? theme.textSecondary
+                        : '#ffffff',
+                  },
+                ]}
+              >
                 {isSubmitting ? '送信中...' : 'メールリンクを送信'}
               </ThemedText>
             </Pressable>
-
-            <ThemedText type="small" themeColor="textSecondary">
-              redirect: {getAuthRedirectUrl()}
-            </ThemedText>
           </ThemedView>
 
           <ThemedView type="backgroundElement" style={styles.form}>
@@ -160,7 +171,7 @@ export default function LoginScreen() {
               style={[
                 styles.input,
                 {
-                  borderColor: theme.backgroundSelected,
+                  borderColor: theme.border,
                   color: theme.text,
                   backgroundColor: theme.background,
                 },
@@ -171,12 +182,27 @@ export default function LoginScreen() {
               onPress={handleVerifyOtp}
               style={({ pressed }) => [
                 styles.secondaryButton,
-                (isSubmitting || !isSupabaseConfigured) &&
-                  styles.buttonDisabled,
+                {
+                  borderColor: theme.border,
+                  backgroundColor:
+                    isSubmitting || !isSupabaseConfigured
+                      ? theme.backgroundSelected
+                      : 'transparent',
+                },
                 pressed && styles.pressed,
               ]}
             >
-              <ThemedText type="smallBold">コードでログイン</ThemedText>
+              <ThemedText
+                type="smallBold"
+                style={{
+                  color:
+                    isSubmitting || !isSupabaseConfigured
+                      ? theme.textSecondary
+                      : theme.text,
+                }}
+              >
+                コードでログイン
+              </ThemedText>
             </Pressable>
           </ThemedView>
 
@@ -230,7 +256,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Spacing.two,
-    backgroundColor: '#2563eb',
   },
   secondaryButton: {
     minHeight: 48,
@@ -238,10 +263,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   buttonText: {
     color: '#ffffff',

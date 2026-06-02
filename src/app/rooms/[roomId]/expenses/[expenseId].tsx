@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { fetchExpenseById, type ExpenseRecord } from '@/lib/expenses';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -15,6 +16,7 @@ export default function ExpenseDetailScreen() {
     roomId?: string;
   }>();
   const router = useRouter();
+  const theme = useTheme();
   const resolvedRoomId = Array.isArray(roomId) ? undefined : roomId;
   const resolvedExpenseId = Array.isArray(expenseId) ? undefined : expenseId;
   const [expense, setExpense] = useState<ExpenseRecord | null>(null);
@@ -138,6 +140,7 @@ export default function ExpenseDetailScreen() {
               onPress={() => router.back()}
               style={({ pressed }) => [
                 styles.ghostButton,
+                { borderColor: theme.border },
                 pressed && styles.pressed,
               ]}
             >
@@ -215,7 +218,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   pressed: {
     opacity: 0.72,

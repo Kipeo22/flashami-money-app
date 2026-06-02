@@ -6,12 +6,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { signOut } from '@/lib/auth';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function RoomsScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const [rooms, setRooms] = useState<UserRoomRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -157,6 +159,7 @@ export default function RoomsScreen() {
                           style={({ pressed }) => [
                             styles.button,
                             styles.roomActionButton,
+                            { backgroundColor: theme.primary },
                             pressed && styles.pressed,
                           ]}
                         >
@@ -173,6 +176,7 @@ export default function RoomsScreen() {
                           style={({ pressed }) => [
                             styles.secondaryButton,
                             styles.roomActionButton,
+                            { borderColor: theme.border },
                             pressed && styles.pressed,
                           ]}
                         >
@@ -190,6 +194,7 @@ export default function RoomsScreen() {
                 <Pressable
                   style={({ pressed }) => [
                     styles.button,
+                    { backgroundColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -204,11 +209,21 @@ export default function RoomsScreen() {
                 onPress={handleSignOut}
                 style={({ pressed }) => [
                   styles.secondaryButton,
-                  isSigningOut && styles.buttonDisabled,
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: isSigningOut
+                      ? theme.backgroundSelected
+                      : 'transparent',
+                  },
                   pressed && !isSigningOut && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold">
+                <ThemedText
+                  type="smallBold"
+                  style={{
+                    color: isSigningOut ? theme.textSecondary : theme.text,
+                  }}
+                >
                   {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
                 </ThemedText>
               </Pressable>
@@ -304,7 +319,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
   },
   secondaryButton: {
     minHeight: 48,
@@ -313,10 +327,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   buttonText: {
     color: '#ffffff',

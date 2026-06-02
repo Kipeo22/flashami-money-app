@@ -468,7 +468,8 @@ export default function ExpenseCreateScreen() {
                       style={[
                         styles.input,
                         {
-                          borderColor: theme.backgroundSelected,
+                          borderColor: theme.border,
+                          backgroundColor: theme.background,
                           color: theme.text,
                         },
                       ]}
@@ -505,7 +506,8 @@ export default function ExpenseCreateScreen() {
                       style={[
                         styles.textArea,
                         {
-                          borderColor: theme.backgroundSelected,
+                          borderColor: theme.border,
+                          backgroundColor: theme.background,
                           color: theme.text,
                         },
                       ]}
@@ -530,7 +532,8 @@ export default function ExpenseCreateScreen() {
                       style={[
                         styles.input,
                         {
-                          borderColor: theme.backgroundSelected,
+                          borderColor: theme.border,
+                          backgroundColor: theme.background,
                           color: theme.text,
                         },
                       ]}
@@ -552,6 +555,7 @@ export default function ExpenseCreateScreen() {
                     onPress={pickReceiptFromLibrary}
                     style={({ pressed }) => [
                       styles.secondaryButton,
+                      { borderColor: theme.border },
                       pressed && styles.pressed,
                     ]}
                   >
@@ -561,6 +565,7 @@ export default function ExpenseCreateScreen() {
                     onPress={takeReceiptPhoto}
                     style={({ pressed }) => [
                       styles.secondaryButton,
+                      { borderColor: theme.border },
                       pressed && styles.pressed,
                     ]}
                   >
@@ -584,6 +589,7 @@ export default function ExpenseCreateScreen() {
                       onPress={clearReceiptImage}
                       style={({ pressed }) => [
                         styles.clearReceiptButton,
+                        { borderColor: theme.border },
                         pressed && styles.pressed,
                       ]}
                     >
@@ -626,7 +632,8 @@ export default function ExpenseCreateScreen() {
                           style={[
                             styles.textArea,
                             {
-                              borderColor: theme.backgroundSelected,
+                              borderColor: theme.border,
+                              backgroundColor: theme.background,
                               color: theme.text,
                             },
                           ]}
@@ -681,7 +688,7 @@ export default function ExpenseCreateScreen() {
                                 backgroundColor: isSelected
                                   ? theme.backgroundSelected
                                   : theme.background,
-                                borderColor: theme.backgroundSelected,
+                                borderColor: theme.border,
                               },
                               pressed && styles.pressed,
                             ]}
@@ -734,7 +741,8 @@ export default function ExpenseCreateScreen() {
                                 styles.input,
                                 styles.shareInput,
                                 {
-                                  borderColor: theme.backgroundSelected,
+                                  borderColor: theme.border,
+                                  backgroundColor: theme.background,
                                   color: theme.text,
                                 },
                               ]}
@@ -785,6 +793,7 @@ export default function ExpenseCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
+                  { borderColor: theme.border },
                   pressed && styles.pressed,
                 ]}
               >
@@ -835,12 +844,17 @@ function OptionButton({
   label: string;
   onPress: () => void;
 }) {
+  const theme = useTheme();
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.optionButton,
-        isSelected && styles.optionButtonSelected,
+        {
+          backgroundColor: isSelected ? theme.primary : 'transparent',
+          borderColor: isSelected ? theme.primary : theme.border,
+        },
         pressed && styles.pressed,
       ]}
     >
@@ -939,14 +953,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#a3a3a3',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-  },
-  optionButtonSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#2563eb',
   },
   optionButtonTextSelected: {
     color: '#ffffff',
@@ -978,7 +987,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
     paddingHorizontal: Spacing.three,
   },
   memberRow: {
@@ -1019,7 +1027,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
     paddingHorizontal: Spacing.three,
   },
   ghostButton: {
@@ -1029,7 +1036,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   buttonText: {
     color: '#ffffff',

@@ -164,7 +164,8 @@ export default function RoomCreateScreen() {
                   style={[
                     styles.input,
                     {
-                      borderColor: theme.backgroundSelected,
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
                       color: theme.text,
                     },
                   ]}
@@ -181,7 +182,8 @@ export default function RoomCreateScreen() {
                   style={[
                     styles.textArea,
                     {
-                      borderColor: theme.backgroundSelected,
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
                       color: theme.text,
                     },
                   ]}
@@ -200,7 +202,8 @@ export default function RoomCreateScreen() {
                     style={[
                       styles.input,
                       {
-                        borderColor: theme.backgroundSelected,
+                        borderColor: theme.border,
+                        backgroundColor: theme.background,
                         color: theme.text,
                       },
                     ]}
@@ -217,7 +220,8 @@ export default function RoomCreateScreen() {
                     style={[
                       styles.input,
                       {
-                        borderColor: theme.backgroundSelected,
+                        borderColor: theme.border,
+                        backgroundColor: theme.background,
                         color: theme.text,
                       },
                     ]}
@@ -247,7 +251,8 @@ export default function RoomCreateScreen() {
                     styles.input,
                     styles.emailInput,
                     {
-                      borderColor: theme.backgroundSelected,
+                      borderColor: theme.border,
+                      backgroundColor: theme.background,
                       color: theme.text,
                     },
                   ]}
@@ -258,6 +263,7 @@ export default function RoomCreateScreen() {
                   onPress={addEmail}
                   style={({ pressed }) => [
                     styles.smallButton,
+                    { backgroundColor: theme.primary },
                     pressed && styles.pressed,
                   ]}
                 >
@@ -293,7 +299,7 @@ export default function RoomCreateScreen() {
                       >
                         <ThemedText
                           type="smallBold"
-                          style={styles.chipRemoveText}
+                          style={{ color: theme.primary }}
                         >
                           削除
                         </ThemedText>
@@ -310,11 +316,21 @@ export default function RoomCreateScreen() {
                 onPress={handleSubmit}
                 style={({ pressed }) => [
                   styles.button,
-                  isSubmitting && styles.buttonDisabled,
+                  {
+                    backgroundColor: isSubmitting
+                      ? theme.backgroundSelected
+                      : theme.primary,
+                  },
                   pressed && !isSubmitting && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold" style={styles.buttonText}>
+                <ThemedText
+                  type="smallBold"
+                  style={[
+                    styles.buttonText,
+                    { color: isSubmitting ? theme.textSecondary : '#ffffff' },
+                  ]}
+                >
                   {isSubmitting ? '作成中...' : 'roomを作成する'}
                 </ThemedText>
               </Pressable>
@@ -323,6 +339,7 @@ export default function RoomCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
+                  { borderColor: theme.border },
                   pressed && styles.pressed,
                 ]}
               >
@@ -437,9 +454,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
-  chipRemoveText: {
-    color: '#2563eb',
-  },
   actions: {
     gap: Spacing.two,
   },
@@ -449,10 +463,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
   },
   smallButton: {
     minHeight: 44,
@@ -460,7 +470,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.three,
-    backgroundColor: '#2563eb',
   },
   ghostButton: {
     minHeight: 48,
@@ -469,7 +478,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   buttonText: {
     color: '#ffffff',
