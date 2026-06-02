@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -10,51 +10,36 @@ export default function RoomsScreen() {
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">Room</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                roomの作成と参加者管理をここから始めます。
-              </ThemedText>
-            </ThemedView>
-
-            <ThemedView type="backgroundElement" style={styles.emptyState}>
-              <ThemedText type="smallBold">
-                まだroomは登録されていません
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                まずはroomを作成して、参加者のメールアドレスを追加してください。
-              </ThemedText>
-            </ThemedView>
-
-            <ThemedView style={styles.actions}>
-              <Link href={'/rooms/new' as any} asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.button,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={styles.buttonText}>
-                    roomを作成する
-                  </ThemedText>
-                </Pressable>
-              </Link>
-
-              <Link href="/login" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold">ログインへ</ThemedText>
-                </Pressable>
-              </Link>
-            </ThemedView>
+        <ThemedView style={styles.container}>
+          <ThemedView style={styles.header}>
+            <ThemedText type="subtitle">Room</ThemedText>
+            <ThemedText themeColor="textSecondary">
+              ログイン後、参加しているイベントや旅行のroomがここに表示されます。
+            </ThemedText>
           </ThemedView>
-        </ScrollView>
+
+          <ThemedView type="backgroundElement" style={styles.emptyState}>
+            <ThemedText type="smallBold">
+              表示できるroomはまだありません
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Step 3でSupabaseから参加roomを取得する画面に拡張します。
+            </ThemedText>
+          </ThemedView>
+
+          <Link href="/login" asChild>
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.pressed,
+              ]}
+            >
+              <ThemedText type="smallBold" style={styles.buttonText}>
+                ログインへ
+              </ThemedText>
+            </Pressable>
+          </Link>
+        </ThemedView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -69,12 +54,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.four,
   },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   container: {
     width: '100%',
     maxWidth: MaxContentWidth,
@@ -88,25 +67,14 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.three,
   },
-  actions: {
-    gap: Spacing.two,
-  },
   button: {
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.four,
     backgroundColor: '#2563eb',
-  },
-  secondaryButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   buttonText: {
     color: '#ffffff',
