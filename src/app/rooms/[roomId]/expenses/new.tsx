@@ -824,6 +824,9 @@ export default function ExpenseCreateScreen() {
                   {
                     backgroundColor: isSubmitDisabled
                       ? theme.backgroundSelected
+                      : theme.primarySoft,
+                    borderColor: isSubmitDisabled
+                      ? theme.border
                       : theme.primary,
                   },
                   pressed && !isSubmitDisabled && styles.pressed,
@@ -834,7 +837,7 @@ export default function ExpenseCreateScreen() {
                   style={{
                     color: isSubmitDisabled
                       ? theme.textDisabled
-                      : theme.primaryText,
+                      : theme.primary,
                   }}
                 >
                   {isSubmitting ? '登録中...' : '支出を登録する'}
@@ -1077,6 +1080,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {

@@ -124,13 +124,16 @@ export default function RoomMembersScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       styles.button,
-                      { backgroundColor: theme.primary },
+                      {
+                        backgroundColor: theme.primarySoft,
+                        borderColor: theme.primary,
+                      },
                       pressed && styles.pressed,
                     ]}
                   >
                     <ThemedText
                       type="smallBold"
-                      style={{ color: theme.primaryText }}
+                      style={{ color: theme.primary }}
                     >
                       支出を登録する
                     </ThemedText>
@@ -302,6 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {

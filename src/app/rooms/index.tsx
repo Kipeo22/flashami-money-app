@@ -232,7 +232,7 @@ export default function RoomsScreen() {
                             styles.primaryButton,
                             styles.roomActionButton,
                             {
-                              backgroundColor: theme.primary,
+                              backgroundColor: theme.primarySoft,
                               borderColor: theme.primary,
                             },
                             pressed && styles.pressed,
@@ -240,7 +240,7 @@ export default function RoomsScreen() {
                         >
                           <ThemedText
                             type="smallBold"
-                            style={{ color: theme.primaryText }}
+                            style={{ color: theme.primary }}
                           >
                             支出を登録する
                           </ThemedText>
