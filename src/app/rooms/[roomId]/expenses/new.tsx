@@ -3,6 +3,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  Controller,
+  useForm,
+  useWatch,
+  type FieldErrors,
+  type FieldValues,
+  type Path,
+  type PathValue,
+} from 'react-hook-form';
+import {
   Image,
   Pressable,
   ScrollView,
@@ -13,15 +22,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Controller,
-  useForm,
-  useWatch,
-  type FieldErrors,
-  type FieldValues,
-  type Path,
-  type PathValue,
-} from 'react-hook-form';
 import { z } from 'zod';
 
 import { ThemedText } from '@/components/themed-text';
