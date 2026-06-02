@@ -350,7 +350,7 @@ export default function RoomCreateScreen() {
                   type="smallBold"
                   style={{
                     color: !canCreateRoom
-                      ? theme.textDisabled
+                      ? theme.textSecondary
                       : theme.primaryText,
                   }}
                 >

@@ -166,7 +166,7 @@ export default function LoginScreen() {
                   type="smallBold"
                   style={{
                     color: !canSendMagicLink
-                      ? theme.textDisabled
+                      ? theme.textSecondary
                       : theme.primaryText,
                   }}
                 >
@@ -219,7 +219,7 @@ export default function LoginScreen() {
                 <ThemedText
                   type="smallBold"
                   style={{
-                    color: !canVerifyOtp ? theme.textDisabled : theme.primary,
+                    color: !canVerifyOtp ? theme.textSecondary : theme.primary,
                   }}
                 >
                   コードでログイン

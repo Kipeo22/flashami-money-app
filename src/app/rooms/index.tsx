@@ -137,7 +137,7 @@ export default function RoomsScreen() {
                 <ThemedText
                   type="smallBold"
                   style={{
-                    color: isSigningOut ? theme.textDisabled : theme.primary,
+                    color: isSigningOut ? theme.textSecondary : theme.primary,
                   }}
                 >
                   {isSigningOut ? 'ログアウト中...' : 'ログアウト'}

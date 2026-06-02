@@ -836,7 +836,7 @@ export default function ExpenseCreateScreen() {
                   type="smallBold"
                   style={{
                     color: isSubmitDisabled
-                      ? theme.textDisabled
+                      ? theme.textSecondary
                       : theme.primary,
                   }}
                 >

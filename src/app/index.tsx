@@ -38,11 +38,18 @@ export default function HomeScreen() {
                     {
                       backgroundColor: isSupabaseConfigured
                         ? theme.overBackground
-                        : theme.backgroundSelected,
+                        : theme.warning,
                     },
                   ]}
                 >
-                  <ThemedText type="smallBold" themeColor="textSecondary">
+                  <ThemedText
+                    type="smallBold"
+                    style={{
+                      color: isSupabaseConfigured
+                        ? theme.textSecondary
+                        : theme.backgroundElement,
+                    }}
+                  >
                     {isSupabaseConfigured ? '設定済み' : '設定が必要'}
                   </ThemedText>
                 </View>
