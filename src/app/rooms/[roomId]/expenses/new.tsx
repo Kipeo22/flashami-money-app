@@ -853,7 +853,10 @@ export default function ExpenseCreateScreen() {
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText type="default" style={{ color: theme.textSecondary, fontWeight: 'bold' }}>
+                <ThemedText
+                  type="default"
+                  style={{ color: theme.textSecondary, fontWeight: 'bold' }}
+                >
                   キャンセルして戻る
                 </ThemedText>
               </Pressable>

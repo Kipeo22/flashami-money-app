@@ -127,7 +127,9 @@ export default function LoginScreen() {
               style={[styles.form, { borderColor: theme.border }]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">1. メールアドレスを入力</ThemedText>
+                <ThemedText type="smallBold">
+                  1. メールアドレスを入力
+                </ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
                   マジックリンクを受信
                 </ThemedText>
@@ -230,7 +232,12 @@ export default function LoginScreen() {
             </ThemedView>
 
             <Link href="/" asChild>
-              <Pressable style={({ pressed }) => [pressed && styles.pressed, { padding: Spacing.two }]}>
+              <Pressable
+                style={({ pressed }) => [
+                  pressed && styles.pressed,
+                  { padding: Spacing.two },
+                ]}
+              >
                 <ThemedText type="linkPrimary">← ホームへ戻る</ThemedText>
               </Pressable>
             </Link>

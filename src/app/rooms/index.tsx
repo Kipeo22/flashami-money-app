@@ -179,10 +179,14 @@ export default function RoomsScreen() {
                 <ThemedText type="default" style={styles.emptyTitle}>
                   参加中のRoomがありません
                 </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDescription}>
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  style={styles.emptyDescription}
+                >
                   新しくイベントや旅行のRoomを作成して、メンバーと支出を記録しましょう。
                 </ThemedText>
-                
+
                 <Pressable
                   onPress={() => router.push('/rooms/new')}
                   style={({ pressed }) => [
@@ -246,7 +250,9 @@ export default function RoomsScreen() {
                     </View>
                     <View style={styles.roomActions}>
                       <Pressable
-                        onPress={() => router.push(`/rooms/${room.id}/expenses/new` as any)}
+                        onPress={() =>
+                          router.push(`/rooms/${room.id}/expenses/new` as any)
+                        }
                         style={({ pressed }) => [
                           styles.primaryButton,
                           styles.roomActionButton,
@@ -265,7 +271,9 @@ export default function RoomsScreen() {
                         </ThemedText>
                       </Pressable>
                       <Pressable
-                        onPress={() => router.push(`/rooms/${room.id}/members` as any)}
+                        onPress={() =>
+                          router.push(`/rooms/${room.id}/members` as any)
+                        }
                         style={({ pressed }) => [
                           styles.secondaryButton,
                           styles.roomActionButton,
