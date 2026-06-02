@@ -112,20 +112,27 @@ export async function requireAuthenticatedUser() {
 }
 
 export function formatSupabaseError(error: unknown) {
-  if (!(error instanceof Error)) {
+  const errorRecord =
+    error && typeof error === 'object'
+      ? (error as Record<string, unknown>)
+      : null;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof errorRecord?.message === 'string'
+        ? errorRecord.message
+        : null;
+
+  if (!message) {
     return '処理に失敗しました。';
   }
 
   const details =
-    'details' in error && typeof error.details === 'string'
-      ? error.details
-      : null;
-  const hint =
-    'hint' in error && typeof error.hint === 'string' ? error.hint : null;
-  const code =
-    'code' in error && typeof error.code === 'string' ? error.code : null;
+    typeof errorRecord?.details === 'string' ? errorRecord.details : null;
+  const hint = typeof errorRecord?.hint === 'string' ? errorRecord.hint : null;
+  const code = typeof errorRecord?.code === 'string' ? errorRecord.code : null;
 
-  return [error.message, details, hint, code ? `code: ${code}` : null]
+  return [message, details, hint, code ? `code: ${code}` : null]
     .filter(Boolean)
     .join('\n');
 }
