@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -100,49 +100,51 @@ export default function RoomsScreen() {
             </ThemedView>
 
             <ThemedView style={styles.actions}>
-              <Link href={'/rooms/new' as any} asChild>
+              <View style={styles.actionRow}>
                 <Pressable
+                  onPress={() => router.push('/rooms/new')}
                   style={({ pressed }) => [
                     styles.primaryButton,
                     {
                       backgroundColor: theme.primary,
                       borderColor: theme.primary,
+                      flex: 1,
                     },
                     pressed && styles.pressed,
                   ]}
                 >
                   <ThemedText
-                    type="smallBold"
-                    style={{ color: theme.primaryText }}
+                    type="default"
+                    style={{ color: theme.primaryText, fontWeight: 'bold' }}
                   >
-                    roomを作成する
+                    ＋ 新しくRoomを作成
                   </ThemedText>
                 </Pressable>
-              </Link>
 
-              <Pressable
-                disabled={isSigningOut}
-                onPress={handleSignOut}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  {
-                    borderColor: theme.primary,
-                    backgroundColor: isSigningOut
-                      ? theme.backgroundSelected
-                      : 'transparent',
-                  },
-                  pressed && !isSigningOut && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="smallBold"
-                  style={{
-                    color: isSigningOut ? theme.textSecondary : theme.primary,
-                  }}
+                <Pressable
+                  disabled={isSigningOut}
+                  onPress={handleSignOut}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    {
+                      borderColor: theme.primary,
+                      backgroundColor: isSigningOut
+                        ? theme.backgroundSelected
+                        : 'transparent',
+                    },
+                    pressed && !isSigningOut && styles.pressed,
+                  ]}
                 >
-                  {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
-                </ThemedText>
-              </Pressable>
+                  <ThemedText
+                    type="smallBold"
+                    style={{
+                      color: isSigningOut ? theme.textSecondary : theme.primary,
+                    }}
+                  >
+                    {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
+                  </ThemedText>
+                </Pressable>
+              </View>
             </ThemedView>
 
             {isLoading ? (
@@ -172,14 +174,34 @@ export default function RoomsScreen() {
             {!isLoading && !error && rooms.length === 0 ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
+                style={[styles.emptyCard, { borderColor: theme.border }]}
               >
-                <ThemedText type="smallBold">
-                  参加中のroomはありません
+                <ThemedText type="default" style={styles.emptyTitle}>
+                  参加中のRoomがありません
                 </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  運営者に登録済みメールアドレスを確認するか、新しいroomを作成してください。
+                <ThemedText type="small" themeColor="textSecondary" style={styles.emptyDescription}>
+                  新しくイベントや旅行のRoomを作成して、メンバーと支出を記録しましょう。
                 </ThemedText>
+                
+                <Pressable
+                  onPress={() => router.push('/rooms/new')}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    {
+                      backgroundColor: theme.primary,
+                      borderColor: theme.primary,
+                      marginTop: Spacing.four,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText
+                    type="default"
+                    style={{ color: theme.primaryText, fontWeight: 'bold' }}
+                  >
+                    新しくRoomを作成する
+                  </ThemedText>
+                </Pressable>
               </ThemedView>
             ) : null}
 
@@ -223,46 +245,41 @@ export default function RoomsScreen() {
                       <Meta label="状態" value={formatMemberStatus(room)} />
                     </View>
                     <View style={styles.roomActions}>
-                      <Link
-                        href={`/rooms/${room.id}/expenses/new` as any}
-                        asChild
+                      <Pressable
+                        onPress={() => router.push(`/rooms/${room.id}/expenses/new` as any)}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          styles.roomActionButton,
+                          {
+                            backgroundColor: theme.primarySoft,
+                            borderColor: theme.primary,
+                          },
+                          pressed && styles.pressed,
+                        ]}
                       >
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.primaryButton,
-                            styles.roomActionButton,
-                            {
-                              backgroundColor: theme.primarySoft,
-                              borderColor: theme.primary,
-                            },
-                            pressed && styles.pressed,
-                          ]}
+                        <ThemedText
+                          type="default"
+                          style={{ color: theme.primary, fontWeight: 'bold' }}
                         >
-                          <ThemedText
-                            type="smallBold"
-                            style={{ color: theme.primary }}
-                          >
-                            支出を登録する
-                          </ThemedText>
-                        </Pressable>
-                      </Link>
-                      <Link href={`/rooms/${room.id}/members` as any} asChild>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.secondaryButton,
-                            styles.roomActionButton,
-                            { borderColor: theme.primary },
-                            pressed && styles.pressed,
-                          ]}
+                          支出を登録する
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => router.push(`/rooms/${room.id}/members` as any)}
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          styles.roomActionButton,
+                          { borderColor: theme.primary },
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="default"
+                          style={{ color: theme.primary, fontWeight: 'bold' }}
                         >
-                          <ThemedText
-                            type="smallBold"
-                            style={{ color: theme.primary }}
-                          >
-                            参加者を見る
-                          </ThemedText>
-                        </Pressable>
-                      </Link>
+                          参加者を見る
+                        </ThemedText>
+                      </Pressable>
                     </View>
                   </ThemedView>
                 ))}
@@ -382,6 +399,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: Spacing.four,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+    width: '100%',
+  },
   secondaryButton: {
     minHeight: 48,
     alignItems: 'center',
@@ -392,5 +414,21 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  emptyCard: {
+    padding: Spacing.five,
+    borderRadius: Radius.panel,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    marginTop: Spacing.four,
+  },
+  emptyTitle: {
+    fontWeight: 'bold',
+  },
+  emptyDescription: {
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

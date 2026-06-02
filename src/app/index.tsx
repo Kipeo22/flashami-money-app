@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const router = useRouter();
 
   return (
     <ThemedView style={styles.screen}>
@@ -61,48 +62,21 @@ export default function HomeScreen() {
             </ThemedView>
 
             <ThemedView style={styles.actions}>
-              <Link href="/rooms" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    { backgroundColor: theme.primary },
-                    pressed && styles.pressed,
-                  ]}
+              <Pressable
+                onPress={() => router.push('/rooms')}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  { backgroundColor: theme.primary },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText
+                  type="default"
+                  style={{ color: theme.primaryText, fontWeight: 'bold' }}
                 >
-                  <ThemedText
-                    type="smallBold"
-                    style={{ color: theme.primaryText }}
-                  >
-                    Room一覧を開く
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              <Link href="/login" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.border },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    ログイン
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              <Link href={'/rooms/new' as any} asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.border },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    room作成
-                  </ThemedText>
-                </Pressable>
-              </Link>
+                  アプリを開く (ログイン / Room一覧)
+                </ThemedText>
+              </Pressable>
             </ThemedView>
           </ThemedView>
         </ScrollView>

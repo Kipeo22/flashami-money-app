@@ -347,14 +347,15 @@ export default function RoomCreateScreen() {
                 ]}
               >
                 <ThemedText
-                  type="smallBold"
+                  type="default"
                   style={{
+                    fontWeight: 'bold',
                     color: !canCreateRoom
                       ? theme.textSecondary
                       : theme.primaryText,
                   }}
                 >
-                  {isSubmitting ? '作成中...' : 'roomを作成する'}
+                  {isSubmitting ? '作成中...' : 'この内容でRoomを作成する'}
                 </ThemedText>
               </Pressable>
 
@@ -362,12 +363,12 @@ export default function RoomCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
-                  { borderColor: theme.primary },
+                  { borderColor: theme.border },
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                  戻る
+                <ThemedText type="default" style={{ color: theme.textSecondary, fontWeight: 'bold' }}>
+                  キャンセルして戻る
                 </ThemedText>
               </Pressable>
             </View>

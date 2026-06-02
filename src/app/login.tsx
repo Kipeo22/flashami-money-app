@@ -127,9 +127,9 @@ export default function LoginScreen() {
               style={[styles.form, { borderColor: theme.border }]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">メールアドレス</ThemedText>
+                <ThemedText type="smallBold">1. メールアドレスを入力</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  必須
+                  マジックリンクを受信
                 </ThemedText>
               </View>
               <TextInput
@@ -163,8 +163,9 @@ export default function LoginScreen() {
                 ]}
               >
                 <ThemedText
-                  type="smallBold"
+                  type="default"
                   style={{
+                    fontWeight: 'bold',
                     color: !canSendMagicLink
                       ? theme.textSecondary
                       : theme.primaryText,
@@ -180,9 +181,9 @@ export default function LoginScreen() {
               style={[styles.form, { borderColor: theme.border }]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">6桁コード</ThemedText>
+                <ThemedText type="smallBold">2. 確認コードを入力</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  メール受信後
+                  メール内にある6桁
                 </ThemedText>
               </View>
               <TextInput
@@ -217,19 +218,20 @@ export default function LoginScreen() {
                 ]}
               >
                 <ThemedText
-                  type="smallBold"
+                  type="default"
                   style={{
+                    fontWeight: 'bold',
                     color: !canVerifyOtp ? theme.textSecondary : theme.primary,
                   }}
                 >
-                  コードでログイン
+                  確認コードを使ってログイン
                 </ThemedText>
               </Pressable>
             </ThemedView>
 
             <Link href="/" asChild>
-              <Pressable style={({ pressed }) => pressed && styles.pressed}>
-                <ThemedText type="linkPrimary">ホームへ戻る</ThemedText>
+              <Pressable style={({ pressed }) => [pressed && styles.pressed, { padding: Spacing.two }]}>
+                <ThemedText type="linkPrimary">← ホームへ戻る</ThemedText>
               </Pressable>
             </Link>
           </ThemedView>

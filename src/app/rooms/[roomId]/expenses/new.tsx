@@ -833,8 +833,9 @@ export default function ExpenseCreateScreen() {
                 ]}
               >
                 <ThemedText
-                  type="smallBold"
+                  type="default"
                   style={{
+                    fontWeight: 'bold',
                     color: isSubmitDisabled
                       ? theme.textSecondary
                       : theme.primary,
@@ -848,12 +849,12 @@ export default function ExpenseCreateScreen() {
                 onPress={() => router.back()}
                 style={({ pressed }) => [
                   styles.ghostButton,
-                  { borderColor: theme.primary },
+                  { borderColor: theme.border },
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                  戻る
+                <ThemedText type="default" style={{ color: theme.textSecondary, fontWeight: 'bold' }}>
+                  キャンセルして戻る
                 </ThemedText>
               </Pressable>
             </View>
