@@ -22,7 +22,11 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
         <Stack.Screen name="index" options={{ title: 'Flashami Money' }} />
         <Stack.Screen name="login" options={{ title: 'ログイン' }} />
         <Stack.Screen name="rooms/index" options={{ title: 'Room' }} />
