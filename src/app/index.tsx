@@ -66,14 +66,14 @@ export default function HomeScreen() {
                 onPress={() => router.push('/rooms')}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  { backgroundColor: theme.primary },
+                  {
+                    backgroundColor: theme.primarySoft,
+                    borderColor: theme.primary,
+                  },
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText
-                  type="default"
-                  style={{ color: theme.primaryText, fontWeight: 'bold' }}
-                >
+                <ThemedText type="default" style={styles.primaryButtonText}>
                   アプリを開く (ログイン / Room一覧)
                 </ThemedText>
               </Pressable>
@@ -138,7 +138,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
+  },
+  primaryButtonText: {
+    color: '#0077c7',
+    fontWeight: 'bold',
   },
   secondaryButton: {
     minHeight: 48,

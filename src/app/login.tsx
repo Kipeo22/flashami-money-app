@@ -159,6 +159,9 @@ export default function LoginScreen() {
                   {
                     backgroundColor: !canSendMagicLink
                       ? theme.backgroundSelected
+                      : theme.primarySoft,
+                    borderColor: !canSendMagicLink
+                      ? theme.border
                       : theme.primary,
                   },
                   pressed && canSendMagicLink && styles.pressed,
@@ -170,7 +173,7 @@ export default function LoginScreen() {
                     fontWeight: 'bold',
                     color: !canSendMagicLink
                       ? theme.textSecondary
-                      : theme.primaryText,
+                      : theme.primary,
                   }}
                 >
                   {isSubmitting ? '送信中...' : 'メールリンクを送信'}
@@ -299,6 +302,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
   },
   secondaryButton: {
     minHeight: 48,

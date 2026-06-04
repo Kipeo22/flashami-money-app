@@ -106,17 +106,14 @@ export default function RoomsScreen() {
                   style={({ pressed }) => [
                     styles.primaryButton,
                     {
-                      backgroundColor: theme.primary,
+                      backgroundColor: theme.primarySoft,
                       borderColor: theme.primary,
                       flex: 1,
                     },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText
-                    type="default"
-                    style={{ color: theme.primaryText, fontWeight: 'bold' }}
-                  >
+                  <ThemedText type="default" style={styles.primaryButtonText}>
                     ＋ 新しくRoomを作成
                   </ThemedText>
                 </Pressable>
@@ -192,17 +189,14 @@ export default function RoomsScreen() {
                   style={({ pressed }) => [
                     styles.primaryButton,
                     {
-                      backgroundColor: theme.primary,
+                      backgroundColor: theme.primarySoft,
                       borderColor: theme.primary,
                       marginTop: Spacing.four,
                     },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText
-                    type="default"
-                    style={{ color: theme.primaryText, fontWeight: 'bold' }}
-                  >
+                  <ThemedText type="default" style={styles.primaryButtonText}>
                     新しくRoomを作成する
                   </ThemedText>
                 </Pressable>
@@ -265,7 +259,7 @@ export default function RoomsScreen() {
                       >
                         <ThemedText
                           type="default"
-                          style={{ color: theme.primary, fontWeight: 'bold' }}
+                          style={styles.primaryButtonText}
                         >
                           支出を登録する
                         </ThemedText>
@@ -406,6 +400,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     borderWidth: 1,
     paddingHorizontal: Spacing.four,
+  },
+  primaryButtonText: {
+    color: '#0077c7',
+    fontWeight: 'bold',
   },
   actionRow: {
     flexDirection: 'row',

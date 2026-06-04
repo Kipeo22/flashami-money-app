@@ -913,16 +913,13 @@ function OptionButton({
       style={({ pressed }) => [
         styles.optionButton,
         {
-          backgroundColor: isSelected ? theme.primary : 'transparent',
+          backgroundColor: isSelected ? theme.primarySoft : 'transparent',
           borderColor: theme.primary,
         },
         pressed && styles.pressed,
       ]}
     >
-      <ThemedText
-        type="smallBold"
-        style={{ color: isSelected ? theme.primaryText : theme.primary }}
-      >
+      <ThemedText type="smallBold" style={{ color: theme.primary }}>
         {label}
       </ThemedText>
     </Pressable>

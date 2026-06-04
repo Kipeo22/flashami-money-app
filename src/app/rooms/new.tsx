@@ -282,14 +282,14 @@ export default function RoomCreateScreen() {
                   onPress={addEmail}
                   style={({ pressed }) => [
                     styles.smallButton,
-                    { backgroundColor: theme.primary },
+                    {
+                      backgroundColor: theme.primarySoft,
+                      borderColor: theme.primary,
+                    },
                     pressed && styles.pressed,
                   ]}
                 >
-                  <ThemedText
-                    type="smallBold"
-                    style={{ color: theme.primaryText }}
-                  >
+                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
                     追加
                   </ThemedText>
                 </Pressable>
@@ -341,7 +341,8 @@ export default function RoomCreateScreen() {
                   {
                     backgroundColor: !canCreateRoom
                       ? theme.backgroundSelected
-                      : theme.primary,
+                      : theme.primarySoft,
+                    borderColor: !canCreateRoom ? theme.border : theme.primary,
                   },
                   pressed && canCreateRoom && styles.pressed,
                 ]}
@@ -350,9 +351,7 @@ export default function RoomCreateScreen() {
                   type="default"
                   style={{
                     fontWeight: 'bold',
-                    color: !canCreateRoom
-                      ? theme.textSecondary
-                      : theme.primaryText,
+                    color: !canCreateRoom ? theme.textSecondary : theme.primary,
                   }}
                 >
                   {isSubmitting ? '作成中...' : 'この内容でRoomを作成する'}
@@ -503,6 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
   },
   smallButton: {
@@ -510,6 +510,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.three,
   },
   ghostButton: {
