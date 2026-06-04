@@ -120,25 +120,43 @@ export default function RoomMembersScreen() {
                 </Pressable>
               </Link>
               {roomId && !Array.isArray(roomId) ? (
-                <Link href={`/rooms/${roomId}/expenses/new` as any} asChild>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.button,
-                      {
-                        backgroundColor: theme.primarySoft,
-                        borderColor: theme.primary,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="smallBold"
-                      style={{ color: theme.primary }}
+                <>
+                  <Link href={`/rooms/${roomId}` as any} asChild>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.button,
+                        {
+                          backgroundColor: theme.primarySoft,
+                          borderColor: theme.primary,
+                        },
+                        pressed && styles.pressed,
+                      ]}
                     >
-                      支出を登録する
-                    </ThemedText>
-                  </Pressable>
-                </Link>
+                      <ThemedText
+                        type="smallBold"
+                        style={{ color: theme.primary }}
+                      >
+                        支出一覧を見る
+                      </ThemedText>
+                    </Pressable>
+                  </Link>
+                  <Link href={`/rooms/${roomId}/expenses/new` as any} asChild>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.secondaryButton,
+                        { borderColor: theme.primary },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <ThemedText
+                        type="smallBold"
+                        style={{ color: theme.primary }}
+                      >
+                        支出を登録する
+                      </ThemedText>
+                    </Pressable>
+                  </Link>
+                </>
               ) : null}
             </View>
 

@@ -10,6 +10,7 @@ import { getSupabaseClient } from '@/lib/supabase';
 
 export type ExpenseType = 'common' | 'personal';
 export type SplitType = 'equal' | 'custom';
+export type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'settled';
 
 export type ExpenseTargetInput = {
   amountShare: number | null;
@@ -34,6 +35,7 @@ type CreateExpenseInput = {
 export type ExpenseRecord = {
   id: string;
   room_id: string;
+  payer_id: string | null;
   expense_type: ExpenseType;
   amount: number;
   category: string;
@@ -43,8 +45,34 @@ export type ExpenseRecord = {
   no_receipt_reason: string | null;
   no_receipt_note: string | null;
   split_type: SplitType | null;
-  status: string;
+  status: ExpenseStatus;
+  created_at: string;
 };
+
+export type ExpenseTargetRecord = {
+  id: string;
+  expense_id: string;
+  user_id: string | null;
+  email: string | null;
+  display_name: string | null;
+  amount_share: number | null;
+};
+
+export type ExpenseListItem = ExpenseRecord & {
+  payer_display_name: string | null;
+  payer_email: string | null;
+  target_count: number;
+  target_labels: string[];
+};
+
+export type ExpenseDetailRecord = ExpenseRecord & {
+  payer_display_name: string | null;
+  payer_email: string | null;
+  targets: ExpenseTargetRecord[];
+};
+
+const EXPENSE_SELECT =
+  'id, room_id, payer_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, split_type, status, created_at';
 
 const RECEIPTS_BUCKET = 'receipts';
 const RECEIPT_IMAGE_CONTENT_TYPE = 'image/jpeg';
@@ -153,9 +181,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
       split_type: input.expenseType === 'personal' ? input.splitType : null,
       created_by: user.id,
     })
-    .select(
-      'id, room_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, split_type, status',
-    )
+    .select(EXPENSE_SELECT)
     .single<ExpenseRecord>();
 
   if (expenseError || !expense) {
@@ -182,9 +208,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
         .from('expenses')
         .update({ receipt_image_url: upload.publicUrl })
         .eq('id', expense.id)
-        .select(
-          'id, room_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, split_type, status',
-        )
+        .select(EXPENSE_SELECT)
         .single<ExpenseRecord>();
 
       if (updateError) {
@@ -226,14 +250,15 @@ export async function fetchExpenseById(roomId: string, expenseId: string) {
   await ensureCurrentUserRoomMembership(roomId);
 
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from('expenses')
-    .select(
-      'id, room_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, split_type, status',
-    )
-    .eq('room_id', roomId)
-    .eq('id', expenseId)
-    .single<ExpenseRecord>();
+  const [{ data, error }, members] = await Promise.all([
+    supabase
+      .from('expenses')
+      .select(EXPENSE_SELECT)
+      .eq('room_id', roomId)
+      .eq('id', expenseId)
+      .single<ExpenseRecord>(),
+    fetchRoomMembers(roomId),
+  ]);
 
   if (error || !data) {
     throw new Error(
@@ -241,7 +266,110 @@ export async function fetchExpenseById(roomId: string, expenseId: string) {
     );
   }
 
-  return data;
+  const { data: targets, error: targetsError } = await supabase
+    .from('expense_targets')
+    .select('id, expense_id, user_id, email, display_name, amount_share')
+    .eq('expense_id', expenseId)
+    .returns<ExpenseTargetRecord[]>();
+
+  if (targetsError) {
+    throw new Error(formatSupabaseError(targetsError));
+  }
+
+  return {
+    ...data,
+    ...findPayerDisplay(data.payer_id, members),
+    targets,
+  } satisfies ExpenseDetailRecord;
+}
+
+export async function fetchRoomExpenses(roomId: string) {
+  await ensureCurrentUserRoomMembership(roomId);
+
+  const supabase = getSupabaseClient();
+  const [{ data: expenses, error: expensesError }, members] = await Promise.all(
+    [
+      supabase
+        .from('expenses')
+        .select(EXPENSE_SELECT)
+        .eq('room_id', roomId)
+        .order('paid_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .returns<ExpenseRecord[]>(),
+      fetchRoomMembers(roomId),
+    ],
+  );
+
+  if (expensesError) {
+    throw new Error(formatSupabaseError(expensesError));
+  }
+
+  if (expenses.length === 0) {
+    return [];
+  }
+
+  const expenseIds = expenses.map((expense) => expense.id);
+  const { data: targets, error: targetsError } = await supabase
+    .from('expense_targets')
+    .select('id, expense_id, user_id, email, display_name, amount_share')
+    .in('expense_id', expenseIds)
+    .returns<ExpenseTargetRecord[]>();
+
+  if (targetsError) {
+    throw new Error(formatSupabaseError(targetsError));
+  }
+
+  const targetsByExpenseId = new Map<string, ExpenseTargetRecord[]>();
+  for (const target of targets) {
+    targetsByExpenseId.set(target.expense_id, [
+      ...(targetsByExpenseId.get(target.expense_id) ?? []),
+      target,
+    ]);
+  }
+
+  return expenses.map((expense) => {
+    const expenseTargets = targetsByExpenseId.get(expense.id) ?? [];
+
+    return {
+      ...expense,
+      ...findPayerDisplay(expense.payer_id, members),
+      target_count: expenseTargets.length,
+      target_labels: expenseTargets.map(formatTargetLabel),
+    } satisfies ExpenseListItem;
+  });
+}
+
+export function summarizeExpenses(expenses: ExpenseRecord[]) {
+  return expenses.reduce(
+    (summary, expense) => {
+      summary.total += expense.amount;
+
+      if (expense.expense_type === 'common') {
+        summary.common += expense.amount;
+        return summary;
+      }
+
+      summary.personal += expense.amount;
+      return summary;
+    },
+    { common: 0, personal: 0, total: 0 },
+  );
+}
+
+function findPayerDisplay(payerId: string | null, members: RoomMemberRecord[]) {
+  const payer = payerId
+    ? members.find((member) => member.user_id === payerId)
+    : undefined;
+
+  return {
+    payer_display_name: payer?.display_name ?? null,
+    payer_email: payer?.email ?? null,
+  };
+}
+
+function formatTargetLabel(target: ExpenseTargetRecord) {
+  const name = target.display_name || target.email || '対象者未設定';
+  return target.amount_share ? `${name}（${target.amount_share}円）` : name;
 }
 
 async function uploadReceiptImage({

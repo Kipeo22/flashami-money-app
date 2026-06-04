@@ -244,9 +244,7 @@ export default function RoomsScreen() {
                     </View>
                     <View style={styles.roomActions}>
                       <Pressable
-                        onPress={() =>
-                          router.push(`/rooms/${room.id}/expenses/new` as any)
-                        }
+                        onPress={() => router.push(`/rooms/${room.id}` as any)}
                         style={({ pressed }) => [
                           styles.primaryButton,
                           styles.roomActionButton,
@@ -260,6 +258,24 @@ export default function RoomsScreen() {
                         <ThemedText
                           type="default"
                           style={styles.primaryButtonText}
+                        >
+                          支出一覧を見る
+                        </ThemedText>
+                      </Pressable>
+                      <Pressable
+                        onPress={() =>
+                          router.push(`/rooms/${room.id}/expenses/new` as any)
+                        }
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          styles.roomActionButton,
+                          { borderColor: theme.primary },
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="default"
+                          style={{ color: theme.primary, fontWeight: 'bold' }}
                         >
                           支出を登録する
                         </ThemedText>

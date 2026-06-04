@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchExpenseById, type ExpenseRecord } from '@/lib/expenses';
+import { fetchExpenseById, type ExpenseDetailRecord } from '@/lib/expenses';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function ExpenseDetailScreen() {
@@ -19,7 +19,7 @@ export default function ExpenseDetailScreen() {
   const theme = useTheme();
   const resolvedRoomId = Array.isArray(roomId) ? undefined : roomId;
   const resolvedExpenseId = Array.isArray(expenseId) ? undefined : expenseId;
-  const [expense, setExpense] = useState<ExpenseRecord | null>(null);
+  const [expense, setExpense] = useState<ExpenseDetailRecord | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -111,18 +111,98 @@ export default function ExpenseDetailScreen() {
                   style={[styles.card, { borderColor: theme.border }]}
                 >
                   <DetailRow label="種別" value={formatExpenseType(expense)} />
-                  <DetailRow label="金額" value={`${expense.amount}円`} />
+                  <DetailRow
+                    label="金額"
+                    value={formatCurrency(expense.amount)}
+                  />
+                  <DetailRow
+                    label="支払者"
+                    value={
+                      expense.payer_display_name ||
+                      expense.payer_email ||
+                      '未設定'
+                    }
+                  />
                   <DetailRow label="カテゴリ" value={expense.category} />
                   <DetailRow label="内容" value={expense.description} />
                   <DetailRow label="支払日" value={expense.paid_at} />
-                  <DetailRow label="ステータス" value={expense.status} />
+                  <DetailRow label="割り方" value={formatSplitType(expense)} />
+                  <DetailRow
+                    label="ステータス"
+                    value={formatExpenseStatus(expense.status)}
+                  />
                 </ThemedView>
 
                 <ThemedView
                   type="backgroundElement"
                   style={[styles.card, { borderColor: theme.border }]}
                 >
-                  <ThemedText type="smallBold">レシート画像</ThemedText>
+                  <View style={styles.sectionHeader}>
+                    <ThemedText type="smallBold">対象者</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {expense.expense_type === 'common'
+                        ? '全体'
+                        : `${expense.targets.length}名`}
+                    </ThemedText>
+                  </View>
+
+                  {expense.expense_type === 'common' ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      共通経費としてroom全体に紐づく支出です。
+                    </ThemedText>
+                  ) : expense.targets.length === 0 ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      対象者は登録されていません。
+                    </ThemedText>
+                  ) : (
+                    <View style={styles.targetList}>
+                      {expense.targets.map((target) => (
+                        <View
+                          key={target.id}
+                          style={[
+                            styles.targetRow,
+                            {
+                              backgroundColor: theme.background,
+                              borderColor: theme.border,
+                            },
+                          ]}
+                        >
+                          <View style={styles.targetMain}>
+                            <ThemedText type="smallBold">
+                              {target.display_name ||
+                                target.email ||
+                                '対象者未設定'}
+                            </ThemedText>
+                            {target.email ? (
+                              <ThemedText
+                                type="small"
+                                themeColor="textSecondary"
+                              >
+                                {target.email}
+                              </ThemedText>
+                            ) : null}
+                          </View>
+                          <ThemedText type="smallBold">
+                            {target.amount_share
+                              ? formatCurrency(target.amount_share)
+                              : '均等'}
+                          </ThemedText>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </ThemedView>
+
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.card, { borderColor: theme.border }]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <ThemedText type="smallBold">レシート</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {expense.receipt_image_url ? '画像あり' : '画像なし'}
+                    </ThemedText>
+                  </View>
                   {expense.receipt_image_url ? (
                     <Image
                       source={{ uri: expense.receipt_image_url }}
@@ -130,30 +210,56 @@ export default function ExpenseDetailScreen() {
                     />
                   ) : (
                     <View style={styles.noReceipt}>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {expense.no_receipt_reason}
-                      </ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        {expense.no_receipt_note}
-                      </ThemedText>
+                      <DetailRow
+                        label="理由"
+                        value={expense.no_receipt_reason}
+                      />
+                      <DetailRow
+                        label="補足メモ"
+                        value={expense.no_receipt_note}
+                      />
                     </View>
                   )}
                 </ThemedView>
               </>
             ) : null}
 
-            <Pressable
-              onPress={() => router.back()}
-              style={({ pressed }) => [
-                styles.ghostButton,
-                { borderColor: theme.primary },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                戻る
-              </ThemedText>
-            </Pressable>
+            <View style={styles.actions}>
+              {resolvedRoomId ? (
+                <Link href={`/rooms/${resolvedRoomId}` as any} asChild>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.ghostButton,
+                      { borderColor: theme.primary },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: theme.primary }}
+                    >
+                      支出一覧へ
+                    </ThemedText>
+                  </Pressable>
+                </Link>
+              ) : null}
+
+              <Pressable
+                onPress={() => router.back()}
+                style={({ pressed }) => [
+                  styles.ghostButton,
+                  { borderColor: theme.border },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText
+                  type="smallBold"
+                  style={{ color: theme.textSecondary }}
+                >
+                  戻る
+                </ThemedText>
+              </Pressable>
+            </View>
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
@@ -161,7 +267,13 @@ export default function ExpenseDetailScreen() {
   );
 }
 
-function DetailRow({ label, value }: { label: string; value: string | null }) {
+function DetailRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | string | null;
+}) {
   return (
     <View style={styles.detailRow}>
       <ThemedText type="small" themeColor="textSecondary">
@@ -174,8 +286,35 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-function formatExpenseType(expense: ExpenseRecord) {
+function formatExpenseType(expense: ExpenseDetailRecord) {
   return expense.expense_type === 'common' ? '共通経費' : '個人間立替';
+}
+
+function formatCurrency(value: number) {
+  return `${value.toLocaleString('ja-JP')}円`;
+}
+
+function formatExpenseStatus(status: ExpenseDetailRecord['status']) {
+  const labels: Record<ExpenseDetailRecord['status'], string> = {
+    approved: '承認済み',
+    pending: '未確認',
+    rejected: '差し戻し',
+    settled: '精算済み',
+  };
+
+  return labels[status] ?? status;
+}
+
+function formatSplitType(expense: ExpenseDetailRecord) {
+  if (expense.expense_type === 'common') {
+    return '-';
+  }
+
+  if (expense.split_type === 'custom') {
+    return '金額指定';
+  }
+
+  return '均等';
 }
 
 const styles = StyleSheet.create({
@@ -211,6 +350,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.control,
     padding: Spacing.three,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -228,6 +373,27 @@ const styles = StyleSheet.create({
   },
   noReceipt: {
     gap: Spacing.one,
+  },
+  targetList: {
+    gap: Spacing.two,
+  },
+  targetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    padding: Spacing.two,
+  },
+  targetMain: {
+    flex: 1,
+    gap: 2,
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
   },
   ghostButton: {
     minHeight: 48,
