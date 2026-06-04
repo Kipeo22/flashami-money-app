@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { signOut } from '@/lib/auth';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -16,7 +16,6 @@ export default function RoomsScreen() {
   const theme = useTheme();
   const [rooms, setRooms] = useState<UserRoomRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,9 +23,7 @@ export default function RoomsScreen() {
 
     async function loadRooms() {
       if (!isSupabaseConfigured) {
-        setError(
-          'Supabase が未設定です。`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。',
-        );
+        setError('room一覧を表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -69,79 +66,34 @@ export default function RoomsScreen() {
     };
   }, [router]);
 
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    setError(null);
-
-    try {
-      await signOut();
-      router.replace('/login');
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : 'ログアウトに失敗しました。',
-      );
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
-
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">Room</ThemedText>
+              <ThemedText type="subtitle">参加済みroom</ThemedText>
               <ThemedText themeColor="textSecondary">
-                roomの作成と参加者管理をここから始めます。
+                参加しているイベントや旅行の支出を確認できます。
               </ThemedText>
             </ThemedView>
 
             <ThemedView style={styles.actions}>
-              <View style={styles.actionRow}>
-                <Pressable
-                  onPress={() => router.push('/rooms/new')}
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    {
-                      backgroundColor: theme.primarySoft,
-                      borderColor: theme.primary,
-                      flex: 1,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="default" style={styles.primaryButtonText}>
-                    ＋ 新しくRoomを作成
-                  </ThemedText>
-                </Pressable>
-
-                <Pressable
-                  disabled={isSigningOut}
-                  onPress={handleSignOut}
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    {
-                      borderColor: theme.primary,
-                      backgroundColor: isSigningOut
-                        ? theme.backgroundSelected
-                        : 'transparent',
-                    },
-                    pressed && !isSigningOut && styles.pressed,
-                  ]}
-                >
-                  <ThemedText
-                    type="smallBold"
-                    style={{
-                      color: isSigningOut ? theme.textSecondary : theme.primary,
-                    }}
-                  >
-                    {isSigningOut ? 'ログアウト中...' : 'ログアウト'}
-                  </ThemedText>
-                </Pressable>
-              </View>
+              <Pressable
+                onPress={() => router.push('/rooms/new')}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  {
+                    backgroundColor: theme.primarySoft,
+                    borderColor: theme.primary,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText type="default" style={styles.primaryButtonText}>
+                  新しくRoomを作成
+                </ThemedText>
+              </Pressable>
             </ThemedView>
 
             {isLoading ? (
@@ -305,6 +257,7 @@ export default function RoomsScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
+        <BottomNav />
       </SafeAreaView>
     </ThemedView>
   );
@@ -340,12 +293,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.four,
   },
   scrollContent: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
+    padding: Spacing.four,
   },
   container: {
     width: '100%',
@@ -420,11 +373,6 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#0077c7',
     fontWeight: 'bold',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-    width: '100%',
   },
   secondaryButton: {
     minHeight: 48,

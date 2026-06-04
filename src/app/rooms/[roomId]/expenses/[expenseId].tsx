@@ -41,8 +41,13 @@ export default function ExpenseDetailScreen() {
     let active = true;
 
     async function loadExpense() {
-      if (!resolvedRoomId || !resolvedExpenseId || !isSupabaseConfigured) {
+      if (!resolvedRoomId || !resolvedExpenseId) {
         setIsLoading(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured) {
+        router.replace('/login');
         return;
       }
 
@@ -79,7 +84,7 @@ export default function ExpenseDetailScreen() {
     return () => {
       active = false;
     };
-  }, [resolvedExpenseId, resolvedRoomId]);
+  }, [resolvedExpenseId, resolvedRoomId, router]);
 
   const handleApprove = async () => {
     if (!resolvedRoomId || !resolvedExpenseId) {
@@ -149,16 +154,6 @@ export default function ExpenseDetailScreen() {
                 登録された支出とレシート画像を確認します。
               </ThemedText>
             </ThemedView>
-
-            {!isSupabaseConfigured ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  `EXPO_PUBLIC_SUPABASE_URL` と
-                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
-                </ThemedText>
-              </ThemedView>
-            ) : null}
 
             {isLoading ? (
               <ThemedView type="backgroundElement" style={styles.alert}>

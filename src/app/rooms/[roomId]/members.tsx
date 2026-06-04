@@ -34,9 +34,7 @@ export default function RoomMembersScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError(
-          'Supabase が未設定です。`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。',
-        );
+        setError('参加者一覧を表示できませんでした。');
         setIsLoading(false);
         return;
       }

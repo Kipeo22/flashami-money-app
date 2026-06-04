@@ -209,8 +209,13 @@ export default function ExpenseCreateScreen() {
     let active = true;
 
     async function loadMembers() {
-      if (!resolvedRoomId || !isSupabaseConfigured) {
+      if (!resolvedRoomId) {
         setIsLoadingMembers(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured) {
+        router.replace('/login');
         return;
       }
 
@@ -240,7 +245,7 @@ export default function ExpenseCreateScreen() {
     return () => {
       active = false;
     };
-  }, [resolvedRoomId]);
+  }, [resolvedRoomId, router]);
 
   const selectedTargets = useMemo(
     () =>
@@ -420,16 +425,6 @@ export default function ExpenseCreateScreen() {
                 room内の共通経費または個人間立替を登録します。
               </ThemedText>
             </ThemedView>
-
-            {!isSupabaseConfigured ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  `EXPO_PUBLIC_SUPABASE_URL` と
-                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
-                </ThemedText>
-              </ThemedView>
-            ) : null}
 
             {feedback ? (
               <ThemedView type="backgroundElement" style={styles.alert}>

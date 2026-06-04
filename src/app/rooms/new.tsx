@@ -47,6 +47,7 @@ export default function RoomCreateScreen() {
 
     async function requireLogin() {
       if (!isSupabaseConfigured) {
+        router.replace('/login');
         return;
       }
 
@@ -140,16 +141,6 @@ export default function RoomCreateScreen() {
                 room名、開催日、参加者のメールアドレスをまとめて登録します。
               </ThemedText>
             </ThemedView>
-
-            {!isSupabaseConfigured ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  `EXPO_PUBLIC_SUPABASE_URL` と
-                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
-                </ThemedText>
-              </ThemedView>
-            ) : null}
 
             {feedback ? (
               <ThemedView type="backgroundElement" style={styles.alert}>
