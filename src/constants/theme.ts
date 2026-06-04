@@ -7,18 +7,38 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#23221e',
+    background: '#f8f7f6',
+    backgroundElement: '#ffffff',
+    backgroundSelected: '#edebe8',
+    border: '#d6d3d0',
+    brand: '#00c4cc',
+    danger: '#e01e5a',
+    link: '#0071c1',
+    overBackground: '#f2f1f0',
+    primary: '#0077c7',
+    primarySoft: '#e6f4fb',
+    primaryPressed: '#0069b0',
+    textDisabled: '#c1bdb7',
+    textSecondary: '#706d65',
+    warning: '#ffcc17',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#f8f7f6',
+    background: '#171614',
+    backgroundElement: '#23221e',
+    backgroundSelected: '#3a3834',
+    border: '#4e4c49',
+    brand: '#00c4cc',
+    danger: '#ff5c8a',
+    link: '#69d7ff',
+    overBackground: '#2d2b28',
+    primary: '#69d7ff',
+    primarySoft: '#123a49',
+    primaryPressed: '#2d7df0',
+    textDisabled: '#706d65',
+    textSecondary: '#c1bdb7',
+    warning: '#ffcc17',
   },
 } as const;
 
@@ -27,7 +47,7 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: 'Hiragino Sans',
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     /** iOS `UIFontDescriptorSystemDesignRounded` */
@@ -36,13 +56,13 @@ export const Fonts = Platform.select({
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'sans-serif',
     serif: 'serif',
     rounded: 'normal',
     mono: 'monospace',
   },
   web: {
-    sans: 'var(--font-display)',
+    sans: 'AdjustedYuGothic, "Yu Gothic", YuGothic, "Hiragino Sans", sans-serif',
     serif: 'var(--font-serif)',
     rounded: 'var(--font-rounded)',
     mono: 'var(--font-mono)',
@@ -57,6 +77,12 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radius = {
+  control: 6,
+  panel: 8,
+  pill: 999,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

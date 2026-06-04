@@ -1,13 +1,17 @@
-import { Link } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
+  const theme = useTheme();
+  const router = useRouter();
+
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -18,40 +22,61 @@ export default function HomeScreen() {
                 Flashami Money
               </ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.lead}>
-                イベントや旅行の支出を、roomごとに整理して集めるモバイルアプリです。
+                イベントや旅行の支出登録、レシート管理、参加者別の確認を room
+                ごとにまとめます。
               </ThemedText>
             </ThemedView>
 
-            <ThemedView type="backgroundElement" style={styles.statusPanel}>
-              <ThemedText type="smallBold">Step 0 setup</ThemedText>
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.statusPanel, { borderColor: theme.border }]}
+            >
+              <View style={styles.statusRow}>
+                <ThemedText type="smallBold">接続状態</ThemedText>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor: isSupabaseConfigured
+                        ? theme.overBackground
+                        : theme.warning,
+                    },
+                  ]}
+                >
+                  <ThemedText
+                    type="smallBold"
+                    style={{
+                      color: isSupabaseConfigured
+                        ? theme.textSecondary
+                        : theme.backgroundElement,
+                    }}
+                  >
+                    {isSupabaseConfigured ? '設定済み' : '設定が必要'}
+                  </ThemedText>
+                </View>
+              </View>
               <ThemedText type="small" themeColor="textSecondary">
-                Supabase: {isSupabaseConfigured ? 'configured' : 'env required'}
+                最初に Room
+                一覧を開き、未ログインの場合はログイン画面へ進みます。
               </ThemedText>
             </ThemedView>
 
             <ThemedView style={styles.actions}>
-              <Link href="/login" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.primaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={styles.primaryButtonText}>
-                    ログインへ
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              <Link href="/rooms" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold">Room一覧へ</ThemedText>
-                </Pressable>
-              </Link>
+              <Pressable
+                onPress={() => router.push('/rooms')}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  {
+                    backgroundColor: theme.primarySoft,
+                    borderColor: theme.primary,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText type="default" style={styles.primaryButtonText}>
+                  アプリを開く (ログイン / Room一覧)
+                </ThemedText>
+              </Pressable>
             </ThemedView>
           </ThemedView>
         </ScrollView>
@@ -82,39 +107,51 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   title: {
-    fontSize: 42,
-    lineHeight: 48,
+    fontSize: 32,
+    lineHeight: 40,
   },
   lead: {
     maxWidth: 520,
   },
   statusPanel: {
-    gap: Spacing.one,
-    borderRadius: Spacing.two,
+    gap: Spacing.two,
+    borderRadius: Radius.control,
+    borderWidth: 1,
     padding: Spacing.three,
   },
-  actions: {
+  statusRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  statusBadge: {
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  actions: {
     gap: Spacing.two,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 50,
+    alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
+    borderWidth: 1,
     paddingHorizontal: Spacing.four,
-    backgroundColor: '#2563eb',
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: '#0077c7',
+    fontWeight: 'bold',
   },
   secondaryButton: {
     minHeight: 48,
+    alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radius.control,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
-    borderColor: '#a3a3a3',
   },
   pressed: {
     opacity: 0.72,
