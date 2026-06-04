@@ -94,7 +94,10 @@ export default function LoginScreen() {
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="subtitle">ログイン</ThemedText>
@@ -127,10 +130,14 @@ export default function LoginScreen() {
               style={[styles.form, { borderColor: theme.border }]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">
+                <ThemedText type="smallBold" style={styles.sectionTitle}>
                   1. メールアドレスを入力
                 </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  style={styles.sectionMeta}
+                >
                   マジックリンクを受信
                 </ThemedText>
               </View>
@@ -186,8 +193,14 @@ export default function LoginScreen() {
               style={[styles.form, { borderColor: theme.border }]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">2. 確認コードを入力</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ThemedText type="smallBold" style={styles.sectionTitle}>
+                  2. 確認コードを入力
+                </ThemedText>
+                <ThemedText
+                  type="small"
+                  themeColor="textSecondary"
+                  style={styles.sectionMeta}
+                >
                   メール内にある6桁
                 </ThemedText>
               </View>
@@ -257,8 +270,13 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
     padding: Spacing.four,
+    width: '100%',
+    alignItems: 'stretch',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
@@ -283,7 +301,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: Spacing.two,
+  },
+  sectionTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionMeta: {
+    flexShrink: 1,
+    textAlign: 'right',
   },
   alert: {
     gap: Spacing.one,
@@ -292,6 +319,8 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
+    width: '100%',
+    alignSelf: 'stretch',
     borderWidth: 1,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
@@ -299,6 +328,8 @@ const styles = StyleSheet.create({
   },
   button: {
     minHeight: 48,
+    width: '100%',
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
@@ -306,6 +337,8 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     minHeight: 48,
+    width: '100%',
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
