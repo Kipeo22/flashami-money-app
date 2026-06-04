@@ -30,6 +30,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ title: 'Flashami Money' }} />
         <Stack.Screen name="login" options={{ title: 'ログイン' }} />
         <Stack.Screen name="rooms/index" options={{ title: 'Room' }} />
+        <Stack.Screen name="rooms/[roomId]" options={{ title: '支出一覧' }} />
         <Stack.Screen name="rooms/new" options={{ title: 'room作成' }} />
         <Stack.Screen
           name="rooms/[roomId]/members"
