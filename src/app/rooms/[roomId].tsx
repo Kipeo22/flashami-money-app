@@ -330,11 +330,7 @@ export default function RoomExpenseListScreen() {
                           />
                           <Badge
                             label={formatExpenseStatus(expense.status)}
-                            tone={
-                              expense.status === 'rejected'
-                                ? 'danger'
-                                : 'neutral'
-                            }
+                            tone={getStatusBadgeTone(expense.status)}
                           />
                           {expense.receipt_image_url ? (
                             <Badge label="レシートあり" tone="primary" />
@@ -493,6 +489,18 @@ function formatExpenseStatus(status: ExpenseStatus) {
   };
 
   return labels[status] ?? status;
+}
+
+function getStatusBadgeTone(status: ExpenseStatus) {
+  if (status === 'approved') {
+    return 'primary';
+  }
+
+  if (status === 'rejected') {
+    return 'danger';
+  }
+
+  return 'neutral';
 }
 
 function formatTargets(expense: ExpenseListItem) {

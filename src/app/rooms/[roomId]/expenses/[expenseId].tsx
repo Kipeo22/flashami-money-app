@@ -1,13 +1,24 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchExpenseById, type ExpenseDetailRecord } from '@/lib/expenses';
+import {
+  fetchExpenseById,
+  updateExpenseReviewStatus,
+  type ExpenseDetailRecord,
+} from '@/lib/expenses';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function ExpenseDetailScreen() {
@@ -22,6 +33,9 @@ export default function ExpenseDetailScreen() {
   const [expense, setExpense] = useState<ExpenseDetailRecord | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,7 +55,9 @@ export default function ExpenseDetailScreen() {
 
         if (active) {
           setExpense(expenseData);
+          setRejectionReason(expenseData.rejection_reason ?? '');
           setFeedback(null);
+          setStatusFeedback(null);
         }
       } catch (error) {
         if (active) {
@@ -64,6 +80,63 @@ export default function ExpenseDetailScreen() {
       active = false;
     };
   }, [resolvedExpenseId, resolvedRoomId]);
+
+  const handleApprove = async () => {
+    if (!resolvedRoomId || !resolvedExpenseId) {
+      setStatusFeedback('roomId または expenseId が指定されていません。');
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    setStatusFeedback(null);
+
+    try {
+      const updatedExpense = await updateExpenseReviewStatus({
+        expenseId: resolvedExpenseId,
+        roomId: resolvedRoomId,
+        status: 'approved',
+      });
+
+      setExpense(updatedExpense);
+      setRejectionReason('');
+      setStatusFeedback('支出を承認しました。');
+    } catch (error) {
+      setStatusFeedback(
+        error instanceof Error ? error.message : '承認に失敗しました。',
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!resolvedRoomId || !resolvedExpenseId) {
+      setStatusFeedback('roomId または expenseId が指定されていません。');
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    setStatusFeedback(null);
+
+    try {
+      const updatedExpense = await updateExpenseReviewStatus({
+        expenseId: resolvedExpenseId,
+        rejectionReason,
+        roomId: resolvedRoomId,
+        status: 'rejected',
+      });
+
+      setExpense(updatedExpense);
+      setRejectionReason(updatedExpense.rejection_reason ?? '');
+      setStatusFeedback('支出を差し戻しました。');
+    } catch (error) {
+      setStatusFeedback(
+        error instanceof Error ? error.message : '差し戻しに失敗しました。',
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.screen}>
@@ -131,7 +204,113 @@ export default function ExpenseDetailScreen() {
                     label="ステータス"
                     value={formatExpenseStatus(expense.status)}
                   />
+                  {expense.status === 'rejected' ? (
+                    <DetailRow
+                      label="差し戻し理由"
+                      value={expense.rejection_reason}
+                    />
+                  ) : null}
                 </ThemedView>
+
+                {expense.current_user_role === 'admin' ? (
+                  <ThemedView
+                    type="backgroundElement"
+                    style={[styles.card, { borderColor: theme.border }]}
+                  >
+                    <View style={styles.sectionHeader}>
+                      <ThemedText type="smallBold">承認・差し戻し</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        admin
+                      </ThemedText>
+                    </View>
+
+                    {statusFeedback ? (
+                      <ThemedView
+                        type="overBackground"
+                        style={styles.inlineFeedback}
+                      >
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {statusFeedback}
+                        </ThemedText>
+                      </ThemedView>
+                    ) : null}
+
+                    <TextInput
+                      multiline
+                      editable={!isUpdatingStatus}
+                      placeholder="レシート画像が不鮮明、金額が違う、対象者が不明など"
+                      placeholderTextColor={theme.textSecondary}
+                      value={rejectionReason}
+                      onChangeText={setRejectionReason}
+                      style={[
+                        styles.textArea,
+                        {
+                          borderColor: theme.border,
+                          backgroundColor: theme.background,
+                          color: theme.text,
+                        },
+                      ]}
+                    />
+
+                    <View style={styles.reviewActions}>
+                      <Pressable
+                        disabled={isUpdatingStatus}
+                        onPress={handleApprove}
+                        style={({ pressed }) => [
+                          styles.reviewButton,
+                          {
+                            backgroundColor: isUpdatingStatus
+                              ? theme.backgroundSelected
+                              : theme.primarySoft,
+                            borderColor: isUpdatingStatus
+                              ? theme.border
+                              : theme.primary,
+                          },
+                          pressed && !isUpdatingStatus && styles.pressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="smallBold"
+                          style={{
+                            color: isUpdatingStatus
+                              ? theme.textSecondary
+                              : theme.primary,
+                          }}
+                        >
+                          承認する
+                        </ThemedText>
+                      </Pressable>
+
+                      <Pressable
+                        disabled={isUpdatingStatus}
+                        onPress={handleReject}
+                        style={({ pressed }) => [
+                          styles.reviewButton,
+                          {
+                            backgroundColor: isUpdatingStatus
+                              ? theme.backgroundSelected
+                              : 'transparent',
+                            borderColor: isUpdatingStatus
+                              ? theme.border
+                              : theme.danger,
+                          },
+                          pressed && !isUpdatingStatus && styles.pressed,
+                        ]}
+                      >
+                        <ThemedText
+                          type="smallBold"
+                          style={{
+                            color: isUpdatingStatus
+                              ? theme.textSecondary
+                              : theme.danger,
+                          }}
+                        >
+                          差し戻す
+                        </ThemedText>
+                      </Pressable>
+                    </View>
+                  </ThemedView>
+                ) : null}
 
                 <ThemedView
                   type="backgroundElement"
@@ -355,6 +534,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
+  },
+  inlineFeedback: {
+    borderRadius: Radius.control,
+    padding: Spacing.two,
+  },
+  textArea: {
+    minHeight: 96,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
+  reviewActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  reviewButton: {
+    minHeight: 48,
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.control,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.four,
   },
   detailRow: {
     flexDirection: 'row',
