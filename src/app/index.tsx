@@ -1,12 +1,13 @@
+import { SymbolView } from 'expo-symbols';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -90,7 +91,9 @@ export default function HomeScreen() {
               <ThemedText type="smallBold" themeColor="textSecondary">
                 Flashami Money
               </ThemedText>
-              <ThemedText type="subtitle">開催中のイベント</ThemedText>
+              <ThemedText type="title" style={styles.screenTitle}>
+                開催中のイベント
+              </ThemedText>
               <ThemedText themeColor="textSecondary">
                 今日使う room を選ぶと、そのまま支出を登録できます。
               </ThemedText>
@@ -99,16 +102,41 @@ export default function HomeScreen() {
             {primaryRoom ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.featureCard, { borderColor: theme.primary }]}
+                style={[
+                  styles.featureCard,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
               >
                 <View style={styles.featureHeader}>
-                  <View style={styles.featureTitleGroup}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      すぐ入力
-                    </ThemedText>
-                    <ThemedText type="subtitle" style={styles.featureTitle}>
-                      {primaryRoom.name}
-                    </ThemedText>
+                  <View style={styles.eventIdentity}>
+                    <View
+                      style={[
+                        styles.eventIcon,
+                        { backgroundColor: theme.primary },
+                      ]}
+                    >
+                      <SymbolView
+                        name={{
+                          ios: 'calendar',
+                          android: 'event',
+                          web: 'event',
+                        }}
+                        size={20}
+                        tintColor="#ffffff"
+                        fallback={
+                          <Text style={styles.eventIconFallback}>•</Text>
+                        }
+                      />
+                    </View>
+                    <View style={styles.featureTitleGroup}>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        すぐ入力
+                      </ThemedText>
+                      <ThemedText type="subtitle" style={styles.featureTitle}>
+                        {primaryRoom.name}
+                      </ThemedText>
+                    </View>
                   </View>
                   <View
                     style={[
@@ -152,7 +180,6 @@ export default function HomeScreen() {
                     styles.primaryButton,
                     {
                       backgroundColor: theme.primary,
-                      borderColor: theme.primary,
                     },
                     pressed && styles.pressed,
                   ]}
@@ -178,7 +205,11 @@ export default function HomeScreen() {
             {isLoading ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
+                style={[
+                  styles.card,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
               >
                 <ThemedText type="smallBold">読み込み中</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -190,7 +221,11 @@ export default function HomeScreen() {
             {error ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
+                style={[
+                  styles.card,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
               >
                 <ThemedText type="smallBold">表示できませんでした</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
@@ -202,7 +237,11 @@ export default function HomeScreen() {
             {!isLoading && !error && activeRooms.length === 0 ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.emptyCard, { borderColor: theme.border }]}
+                style={[
+                  styles.emptyCard,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
               >
                 <ThemedText type="default" style={styles.emptyTitle}>
                   開催中のイベントはありません
@@ -248,6 +287,7 @@ function RoomRow({ room }: { room: UserRoomRecord }) {
       style={({ pressed }) => [
         styles.roomRow,
         { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        Shadows.card,
         pressed && styles.pressed,
       ]}
     >
@@ -257,9 +297,16 @@ function RoomRow({ room }: { room: UserRoomRecord }) {
           {formatRoomPeriod(room)}
         </ThemedText>
       </View>
-      <ThemedText type="smallBold" style={{ color: theme.primary }}>
-        入力
-      </ThemedText>
+      <SymbolView
+        name={{
+          ios: 'plus.circle.fill',
+          android: 'add_circle',
+          web: 'add_circle',
+        }}
+        size={26}
+        tintColor={theme.primary}
+        fallback={<Text style={{ color: theme.primary, fontSize: 24 }}>+</Text>}
+      />
     </Pressable>
   );
 }
@@ -312,7 +359,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
-    padding: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
   },
   container: {
     width: '100%',
@@ -321,6 +370,9 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: Spacing.two,
+  },
+  screenTitle: {
+    lineHeight: 40,
   },
   featureCard: {
     gap: Spacing.three,
@@ -333,6 +385,24 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: Spacing.three,
+  },
+  eventIdentity: {
+    minWidth: 0,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  eventIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+  },
+  eventIconFallback: {
+    color: '#ffffff',
+    fontSize: 20,
   },
   featureTitleGroup: {
     flex: 1,
@@ -362,8 +432,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
   },
   primaryButtonText: {
@@ -374,7 +443,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },
@@ -422,5 +491,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+    transform: [{ scale: 0.98 }],
   },
 });

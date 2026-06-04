@@ -4,14 +4,14 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radius, Spacing } from '@/constants/theme';
+import { Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 const navItems = [
   {
     href: '/',
     isActive: (pathname: string) => pathname === '/',
-    label: 'メイン',
+    label: 'ホーム',
     symbol: { ios: 'house', android: 'home', web: 'home' },
   },
   {
@@ -36,7 +36,11 @@ export function BottomNav() {
   return (
     <ThemedView
       type="backgroundElement"
-      style={[styles.container, { borderTopColor: theme.border }]}
+      style={[
+        styles.container,
+        { borderTopColor: theme.border },
+        Shadows.tabBar,
+      ]}
     >
       {navItems.map((item) => {
         const isActive = item.isActive(pathname);
@@ -48,19 +52,22 @@ export function BottomNav() {
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             onPress={() => router.replace(item.href as never)}
-            style={({ pressed }) => [
-              styles.item,
-              isActive && { backgroundColor: theme.primarySoft },
-              pressed && styles.pressed,
-            ]}
+            style={({ pressed }) => [styles.item, pressed && styles.pressed]}
           >
             <SymbolView
               name={item.symbol}
               size={22}
               tintColor={color}
+              type={isActive ? 'hierarchical' : 'monochrome'}
               fallback={<Text style={[styles.fallbackIcon, { color }]}>□</Text>}
             />
-            <ThemedText type="smallBold" style={[styles.label, { color }]}>
+            <ThemedText
+              type="small"
+              style={[
+                styles.label,
+                { color, fontWeight: isActive ? '700' : '500' },
+              ]}
+            >
               {item.label}
             </ThemedText>
           </Pressable>
@@ -74,29 +81,27 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     flexDirection: 'row',
-    gap: Spacing.two,
     borderTopWidth: 1,
-    paddingHorizontal: Spacing.two,
-    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    paddingTop: Spacing.one,
   },
   item: {
-    minHeight: 56,
+    minHeight: 52,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
     paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.one,
   },
   label: {
-    fontSize: 12,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 16,
   },
   fallbackIcon: {
     fontSize: 18,
     lineHeight: 22,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.55,
   },
 });

@@ -20,7 +20,7 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>メイン</TabButton>
+            <TabButton>ホーム</TabButton>
           </TabTrigger>
           <TabTrigger name="rooms" href="/rooms" asChild>
             <TabButton>Room</TabButton>

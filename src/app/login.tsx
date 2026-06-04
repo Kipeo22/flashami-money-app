@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { sendMagicLink, verifyEmailOtp } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
@@ -102,14 +102,14 @@ export default function LoginScreen() {
   };
 
   return (
-    <ThemedView style={styles.screen}>
+    <ThemedView type="backgroundElement" style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.scrollContent}
         >
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.brand}>
+          <ThemedView type="backgroundElement" style={styles.container}>
+            <ThemedView type="backgroundElement" style={styles.brand}>
               <ThemedText type="title" style={styles.appName}>
                 Flashami Money
               </ThemedText>
@@ -117,7 +117,7 @@ export default function LoginScreen() {
 
             <ThemedView
               type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }]}
+              style={[styles.form, { borderColor: theme.border }, Shadows.card]}
             >
               <Field label="メールアドレス">
                 <TextInput
@@ -133,7 +133,7 @@ export default function LoginScreen() {
                     {
                       borderColor: theme.border,
                       color: theme.text,
-                      backgroundColor: theme.background,
+                      backgroundColor: theme.overBackground,
                     },
                   ]}
                 />
@@ -147,9 +147,6 @@ export default function LoginScreen() {
                   {
                     backgroundColor: !canSendMagicLink
                       ? theme.backgroundSelected
-                      : theme.primary,
-                    borderColor: !canSendMagicLink
-                      ? theme.border
                       : theme.primary,
                   },
                   pressed && canSendMagicLink && styles.pressed,
@@ -186,7 +183,7 @@ export default function LoginScreen() {
                     {
                       borderColor: theme.border,
                       color: theme.text,
-                      backgroundColor: theme.background,
+                      backgroundColor: theme.overBackground,
                     },
                   ]}
                 />
@@ -221,7 +218,11 @@ export default function LoginScreen() {
             {feedback ? (
               <ThemedView
                 type="backgroundElement"
-                style={[styles.feedback, { borderColor: theme.border }]}
+                style={[
+                  styles.feedback,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
               >
                 <ThemedText type="small" themeColor="textSecondary">
                   {feedback}
@@ -255,7 +256,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.four,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.four,
   },
   container: {
     width: '100%',
@@ -279,7 +281,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   input: {
-    minHeight: 48,
+    minHeight: 52,
     borderWidth: 1,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
@@ -289,15 +291,14 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
     borderWidth: 1,
   },
@@ -306,10 +307,11 @@ const styles = StyleSheet.create({
   },
   feedback: {
     borderWidth: 1,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   pressed: {
     opacity: 0.72,
+    transform: [{ scale: 0.98 }],
   },
 });
