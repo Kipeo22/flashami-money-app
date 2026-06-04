@@ -243,6 +243,16 @@ export async function ensureCurrentUserRoomMembership(roomId: string) {
   return updatedMembership;
 }
 
+export async function requireCurrentUserRoomAdmin(roomId: string) {
+  const membership = await ensureCurrentUserRoomMembership(roomId);
+
+  if (membership.role !== 'admin') {
+    throw new Error('支出ステータスを変更できるのはadminのみです。');
+  }
+
+  return membership;
+}
+
 export async function fetchCurrentUserRooms() {
   const supabase = getSupabaseClient();
   const user = await requireAuthenticatedUser();

@@ -3,7 +3,9 @@ import {
   fetchRoomMembers,
   formatSupabaseError,
   isValidIsoDate,
+  requireCurrentUserRoomAdmin,
   requireAuthenticatedUser,
+  type RoomMemberRole,
   type RoomMemberRecord,
 } from '@/lib/rooms';
 import { getSupabaseClient } from '@/lib/supabase';
@@ -44,6 +46,7 @@ export type ExpenseRecord = {
   receipt_image_url: string | null;
   no_receipt_reason: string | null;
   no_receipt_note: string | null;
+  rejection_reason: string | null;
   split_type: SplitType | null;
   status: ExpenseStatus;
   created_at: string;
@@ -66,13 +69,14 @@ export type ExpenseListItem = ExpenseRecord & {
 };
 
 export type ExpenseDetailRecord = ExpenseRecord & {
+  current_user_role: RoomMemberRole;
   payer_display_name: string | null;
   payer_email: string | null;
   targets: ExpenseTargetRecord[];
 };
 
 const EXPENSE_SELECT =
-  'id, room_id, payer_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, split_type, status, created_at';
+  'id, room_id, payer_id, expense_type, amount, category, description, paid_at, receipt_image_url, no_receipt_reason, no_receipt_note, rejection_reason, split_type, status, created_at';
 
 const RECEIPTS_BUCKET = 'receipts';
 const RECEIPT_IMAGE_CONTENT_TYPE = 'image/jpeg';
@@ -247,7 +251,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
 }
 
 export async function fetchExpenseById(roomId: string, expenseId: string) {
-  await ensureCurrentUserRoomMembership(roomId);
+  const currentMembership = await ensureCurrentUserRoomMembership(roomId);
 
   const supabase = getSupabaseClient();
   const [{ data, error }, members] = await Promise.all([
@@ -278,9 +282,46 @@ export async function fetchExpenseById(roomId: string, expenseId: string) {
 
   return {
     ...data,
+    current_user_role: currentMembership.role,
     ...findPayerDisplay(data.payer_id, members),
     targets,
   } satisfies ExpenseDetailRecord;
+}
+
+export async function updateExpenseReviewStatus({
+  expenseId,
+  rejectionReason,
+  roomId,
+  status,
+}: {
+  expenseId: string;
+  rejectionReason?: string;
+  roomId: string;
+  status: Extract<ExpenseStatus, 'approved' | 'rejected'>;
+}) {
+  await requireCurrentUserRoomAdmin(roomId);
+
+  const normalizedRejectionReason = rejectionReason?.trim() ?? '';
+  if (status === 'rejected' && !normalizedRejectionReason) {
+    throw new Error('差し戻し理由を入力してください。');
+  }
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from('expenses')
+    .update({
+      rejection_reason:
+        status === 'rejected' ? normalizedRejectionReason : null,
+      status,
+    })
+    .eq('room_id', roomId)
+    .eq('id', expenseId);
+
+  if (error) {
+    throw new Error(formatSupabaseError(error));
+  }
+
+  return fetchExpenseById(roomId, expenseId);
 }
 
 export async function fetchRoomExpenses(roomId: string) {
