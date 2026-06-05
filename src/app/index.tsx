@@ -119,12 +119,18 @@ export default function HomeScreen() {
             </ThemedView>
 
             {primaryRoom ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[
+              <Pressable
+                onPress={() =>
+                  router.push(`/rooms/${primaryRoom.id}/expenses/new` as never)
+                }
+                style={({ pressed }) => [
                   styles.featureCard,
-                  { borderColor: theme.border },
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.border,
+                  },
                   Shadows.card,
+                  pressed && styles.pressed,
                 ]}
               >
                 <View style={styles.featureHeader}>
@@ -150,7 +156,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.featureTitleGroup}>
                       <ThemedText type="small" themeColor="textSecondary">
-                        すぐ入力
+                        入力先
                       </ThemedText>
                       <ThemedText type="subtitle" style={styles.featureTitle}>
                         {primaryRoom.name}
@@ -172,10 +178,6 @@ export default function HomeScreen() {
                   </View>
                 </View>
 
-                <ThemedText themeColor="textSecondary">
-                  {primaryRoom.description || '支出登録を開始できます。'}
-                </ThemedText>
-
                 <View
                   style={[
                     styles.metaRow,
@@ -184,35 +186,39 @@ export default function HomeScreen() {
                 >
                   <Meta label="期間" value={formatRoomPeriod(primaryRoom)} />
                   <Meta
-                    label="支出件数"
+                    label="登録済み"
                     value={`${primaryRoom.expense_count}件`}
                   />
                 </View>
 
-                <Pressable
-                  onPress={() =>
-                    router.push(
-                      `/rooms/${primaryRoom.id}/expenses/new` as never,
-                    )
-                  }
-                  style={({ pressed }) => [
+                <View
+                  style={[
                     styles.primaryButton,
                     {
                       backgroundColor: theme.primary,
                     },
-                    pressed && styles.pressed,
                   ]}
                 >
+                  <SymbolView
+                    name={{
+                      ios: 'plus.circle.fill',
+                      android: 'add_circle',
+                      web: 'add_circle',
+                    }}
+                    size={22}
+                    tintColor="#ffffff"
+                    fallback={<Text style={styles.primaryIconFallback}>+</Text>}
+                  />
                   <ThemedText type="default" style={styles.primaryButtonText}>
-                    支出を登録する
+                    支出を入力
                   </ThemedText>
-                </Pressable>
-              </ThemedView>
+                </View>
+              </Pressable>
             ) : null}
 
             {activeRooms.length > 1 ? (
               <ThemedView style={styles.section}>
-                <ThemedText type="smallBold">ほかの開催中 room</ThemedText>
+                <ThemedText type="smallBold">ほかの入力先</ThemedText>
                 <View style={styles.roomList}>
                   {activeRooms.slice(1).map((room) => (
                     <RoomRow key={room.id} room={room} />
@@ -345,16 +351,21 @@ function RoomRow({ room }: { room: UserRoomRecord }) {
           {formatRoomPeriod(room)}
         </ThemedText>
       </View>
-      <SymbolView
-        name={{
-          ios: 'plus.circle.fill',
-          android: 'add_circle',
-          web: 'add_circle',
-        }}
-        size={26}
-        tintColor={theme.primary}
-        fallback={<Text style={{ color: theme.primary, fontSize: 24 }}>+</Text>}
-      />
+      <View style={[styles.inputPill, { backgroundColor: theme.primarySoft }]}>
+        <SymbolView
+          name={{
+            ios: 'plus',
+            android: 'add',
+            web: 'add',
+          }}
+          size={16}
+          tintColor={theme.primary}
+          fallback={<Text style={{ color: theme.primary }}>+</Text>}
+        />
+        <ThemedText type="smallBold" style={{ color: theme.primary }}>
+          入力
+        </ThemedText>
+      </View>
     </Pressable>
   );
 }
@@ -545,15 +556,22 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   primaryButton: {
-    minHeight: 52,
+    minHeight: 58,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: Spacing.two,
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.four,
   },
   primaryButtonText: {
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  primaryIconFallback: {
+    color: '#ffffff',
+    fontSize: 20,
+    lineHeight: 22,
   },
   secondaryButton: {
     minHeight: 48,
@@ -582,6 +600,15 @@ const styles = StyleSheet.create({
   roomRowMain: {
     flex: 1,
     gap: Spacing.one,
+  },
+  inputPill: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.three,
   },
   card: {
     gap: Spacing.two,
