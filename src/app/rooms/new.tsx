@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -47,6 +48,7 @@ export default function RoomCreateScreen() {
 
     async function requireLogin() {
       if (!isSupabaseConfigured) {
+        router.replace('/login');
         return;
       }
 
@@ -140,16 +142,6 @@ export default function RoomCreateScreen() {
                 room名、開催日、参加者のメールアドレスをまとめて登録します。
               </ThemedText>
             </ThemedView>
-
-            {!isSupabaseConfigured ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  `EXPO_PUBLIC_SUPABASE_URL` と
-                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
-                </ThemedText>
-              </ThemedView>
-            ) : null}
 
             {feedback ? (
               <ThemedView type="backgroundElement" style={styles.alert}>
@@ -376,6 +368,7 @@ export default function RoomCreateScreen() {
             </View>
           </ThemedView>
         </ScrollView>
+        <BottomNav />
       </SafeAreaView>
     </ThemedView>
   );
@@ -405,12 +398,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.four,
   },
   scrollContent: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
   },
   container: {
     width: '100%',

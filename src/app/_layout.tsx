@@ -29,6 +29,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ title: 'Flashami Money' }} />
         <Stack.Screen name="login" options={{ title: 'ログイン' }} />
+        <Stack.Screen name="settings" options={{ title: '設定' }} />
         <Stack.Screen name="rooms/index" options={{ title: 'Room' }} />
         <Stack.Screen name="rooms/[roomId]" options={{ title: '支出一覧' }} />
         <Stack.Screen name="rooms/new" options={{ title: 'room作成' }} />
@@ -66,7 +67,7 @@ function AuthLinkHandler() {
       try {
         const didRestoreSession = await restoreSessionFromUrl(url);
         if (active && didRestoreSession) {
-          router.replace('/rooms');
+          router.replace('/');
         }
       } catch {
         // The login screen also reports authentication errors after explicit actions.

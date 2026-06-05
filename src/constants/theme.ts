@@ -7,38 +7,38 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#23221e',
-    background: '#f8f7f6',
+    text: '#001435',
+    background: '#f5f7fa',
     backgroundElement: '#ffffff',
-    backgroundSelected: '#edebe8',
-    border: '#d6d3d0',
-    brand: '#00c4cc',
-    danger: '#e01e5a',
-    link: '#0071c1',
-    overBackground: '#f2f1f0',
-    primary: '#0077c7',
-    primarySoft: '#e6f4fb',
-    primaryPressed: '#0069b0',
-    textDisabled: '#c1bdb7',
-    textSecondary: '#706d65',
-    warning: '#ffcc17',
+    backgroundSelected: '#eef1f4',
+    border: '#e5e8ed',
+    brand: '#0070ba',
+    danger: '#d20021',
+    link: '#0070ba',
+    overBackground: '#f5f7fa',
+    primary: '#003087',
+    primarySoft: '#eaf2ff',
+    primaryPressed: '#001c64',
+    textDisabled: '#9da3a6',
+    textSecondary: '#687173',
+    warning: '#ffb81c',
   },
   dark: {
-    text: '#f8f7f6',
-    background: '#171614',
-    backgroundElement: '#23221e',
-    backgroundSelected: '#3a3834',
-    border: '#4e4c49',
-    brand: '#00c4cc',
-    danger: '#ff5c8a',
-    link: '#69d7ff',
-    overBackground: '#2d2b28',
-    primary: '#69d7ff',
-    primarySoft: '#123a49',
-    primaryPressed: '#2d7df0',
-    textDisabled: '#706d65',
-    textSecondary: '#c1bdb7',
-    warning: '#ffcc17',
+    text: '#ffffff',
+    background: '#0a0e1a',
+    backgroundElement: '#141a2a',
+    backgroundSelected: '#1f2740',
+    border: '#2a3142',
+    brand: '#3b82f6',
+    danger: '#ff5c6c',
+    link: '#69a7ff',
+    overBackground: '#1f2740',
+    primary: '#3b82f6',
+    primarySoft: '#182b4f',
+    primaryPressed: '#69a7ff',
+    textDisabled: '#687173',
+    textSecondary: '#a8aec4',
+    warning: '#ffb81c',
   },
 } as const;
 
@@ -80,9 +80,42 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  control: 6,
-  panel: 8,
+  control: 12,
+  panel: 16,
   pill: 999,
+} as const;
+
+export const Shadows = {
+  card:
+    Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+      default: {
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+      },
+    }) ?? {},
+  tabBar:
+    Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: -1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+      default: {
+        boxShadow: '0 -1px 4px rgba(0, 0, 0, 0.04)',
+      },
+    }) ?? {},
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

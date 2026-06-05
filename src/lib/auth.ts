@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { getSupabaseClient } from '@/lib/supabase';
 
 export function getAuthRedirectUrl() {
-  return Linking.createURL('rooms');
+  return Linking.createURL('');
 }
 
 export async function sendMagicLink(email: string) {

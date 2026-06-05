@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -41,8 +42,13 @@ export default function ExpenseDetailScreen() {
     let active = true;
 
     async function loadExpense() {
-      if (!resolvedRoomId || !resolvedExpenseId || !isSupabaseConfigured) {
+      if (!resolvedRoomId || !resolvedExpenseId) {
         setIsLoading(false);
+        return;
+      }
+
+      if (!isSupabaseConfigured) {
+        router.replace('/login');
         return;
       }
 
@@ -79,7 +85,7 @@ export default function ExpenseDetailScreen() {
     return () => {
       active = false;
     };
-  }, [resolvedExpenseId, resolvedRoomId]);
+  }, [resolvedExpenseId, resolvedRoomId, router]);
 
   const handleApprove = async () => {
     if (!resolvedRoomId || !resolvedExpenseId) {
@@ -149,16 +155,6 @@ export default function ExpenseDetailScreen() {
                 登録された支出とレシート画像を確認します。
               </ThemedText>
             </ThemedView>
-
-            {!isSupabaseConfigured ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">Supabase が未設定です</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  `EXPO_PUBLIC_SUPABASE_URL` と
-                  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。
-                </ThemedText>
-              </ThemedView>
-            ) : null}
 
             {isLoading ? (
               <ThemedView type="backgroundElement" style={styles.alert}>
@@ -441,6 +437,7 @@ export default function ExpenseDetailScreen() {
             </View>
           </ThemedView>
         </ScrollView>
+        <BottomNav />
       </SafeAreaView>
     </ThemedView>
   );
@@ -503,12 +500,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.four,
   },
   scrollContent: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
   },
   container: {
     width: '100%',

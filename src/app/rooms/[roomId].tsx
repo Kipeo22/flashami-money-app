@@ -1,8 +1,10 @@
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -14,7 +16,12 @@ import {
   type ExpenseStatus,
   type ExpenseType,
 } from '@/lib/expenses';
-import { fetchRoomById, type RoomRecord } from '@/lib/rooms';
+import {
+  fetchRoomById,
+  fetchRoomMembers,
+  type RoomMemberRecord,
+  type RoomRecord,
+} from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 type ExpenseTypeFilter = 'all' | ExpenseType;
@@ -40,6 +47,7 @@ export default function RoomExpenseListScreen() {
   const router = useRouter();
   const theme = useTheme();
   const [room, setRoom] = useState<RoomRecord | null>(null);
+  const [members, setMembers] = useState<RoomMemberRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseListItem[]>([]);
   const [expenseTypeFilter, setExpenseTypeFilter] =
     useState<ExpenseTypeFilter>('all');
@@ -58,9 +66,7 @@ export default function RoomExpenseListScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError(
-          'Supabase が未設定です。`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` を設定してください。',
-        );
+        setError('支出一覧を表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -69,9 +75,10 @@ export default function RoomExpenseListScreen() {
       setError(null);
 
       try {
-        const [roomData, expenseData] = await Promise.all([
+        const [roomData, expenseData, memberData] = await Promise.all([
           fetchRoomById(resolvedRoomId),
           fetchRoomExpenses(resolvedRoomId),
+          fetchRoomMembers(resolvedRoomId),
         ]);
 
         if (!active) {
@@ -80,6 +87,7 @@ export default function RoomExpenseListScreen() {
 
         setRoom(roomData);
         setExpenses(expenseData);
+        setMembers(memberData);
       } catch (caughtError) {
         if (!active) {
           return;
@@ -130,6 +138,28 @@ export default function RoomExpenseListScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedView style={styles.container}>
+            <Pressable
+              onPress={() => router.replace('/rooms')}
+              style={({ pressed }) => [
+                styles.backLink,
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{
+                  ios: 'chevron.left',
+                  android: 'chevron_left',
+                  web: 'chevron_left',
+                }}
+                size={16}
+                tintColor={theme.primary}
+                fallback={<Text style={{ color: theme.primary }}>‹</Text>}
+              />
+              <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                Room一覧
+              </ThemedText>
+            </Pressable>
+
             <ThemedView style={styles.header}>
               <ThemedText type="subtitle">
                 {room?.name ?? '支出一覧'}
@@ -138,68 +168,6 @@ export default function RoomExpenseListScreen() {
                 {room?.description || 'room内の支出を一覧で確認します。'}
               </ThemedText>
             </ThemedView>
-
-            <View style={styles.actions}>
-              <Link href="/rooms" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.primary },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    room一覧へ
-                  </ThemedText>
-                </Pressable>
-              </Link>
-
-              {resolvedRoomId ? (
-                <>
-                  <Link
-                    href={`/rooms/${resolvedRoomId}/members` as any}
-                    asChild
-                  >
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.secondaryButton,
-                        { borderColor: theme.primary },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <ThemedText
-                        type="smallBold"
-                        style={{ color: theme.primary }}
-                      >
-                        参加者を見る
-                      </ThemedText>
-                    </Pressable>
-                  </Link>
-                  <Link
-                    href={`/rooms/${resolvedRoomId}/expenses/new` as any}
-                    asChild
-                  >
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.primaryButton,
-                        {
-                          backgroundColor: theme.primarySoft,
-                          borderColor: theme.primary,
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <ThemedText
-                        type="smallBold"
-                        style={{ color: theme.primary }}
-                      >
-                        支出を登録する
-                      </ThemedText>
-                    </Pressable>
-                  </Link>
-                </>
-              ) : null}
-            </View>
 
             {isLoading ? (
               <ThemedView
@@ -232,6 +200,71 @@ export default function RoomExpenseListScreen() {
                   <SummaryTile label="共通経費" value={summary.common} />
                   <SummaryTile label="個人間立替" value={summary.personal} />
                 </View>
+
+                <ThemedView
+                  type="backgroundElement"
+                  style={[styles.card, { borderColor: theme.border }]}
+                >
+                  <View style={styles.sectionHeader}>
+                    <ThemedText type="smallBold">参加者</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {members.length}名
+                    </ThemedText>
+                  </View>
+
+                  {members.length === 0 ? (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      参加者はまだ登録されていません。
+                    </ThemedText>
+                  ) : (
+                    <View style={styles.memberList}>
+                      {members.map((member) => (
+                        <View
+                          key={member.id}
+                          style={[
+                            styles.memberRow,
+                            {
+                              backgroundColor: theme.background,
+                              borderColor: theme.border,
+                            },
+                          ]}
+                        >
+                          <View style={styles.memberMain}>
+                            <ThemedText
+                              type="smallBold"
+                              style={styles.memberName}
+                            >
+                              {member.display_name || member.email}
+                            </ThemedText>
+                            <ThemedText
+                              type="small"
+                              themeColor="textSecondary"
+                              style={styles.memberEmail}
+                            >
+                              {member.email}
+                            </ThemedText>
+                          </View>
+                          <View style={styles.badgeRowCompact}>
+                            <Badge
+                              label={formatMemberRole(member.role)}
+                              tone={
+                                member.role === 'admin' ? 'primary' : 'neutral'
+                              }
+                            />
+                            <Badge
+                              label={formatMemberStatus(member.status)}
+                              tone={
+                                member.status === 'joined'
+                                  ? 'primary'
+                                  : 'neutral'
+                              }
+                            />
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </ThemedView>
 
                 <ThemedView
                   type="backgroundElement"
@@ -358,6 +391,36 @@ export default function RoomExpenseListScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
+        {resolvedRoomId ? (
+          <ThemedView
+            type="backgroundElement"
+            style={[styles.actionFooter, { borderTopColor: theme.border }]}
+          >
+            <View style={styles.actionFooterInner}>
+              <Pressable
+                onPress={() =>
+                  router.push(`/rooms/${resolvedRoomId}/expenses/new` as never)
+                }
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  { backgroundColor: theme.primary },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: 'plus', android: 'add', web: 'add' }}
+                  size={18}
+                  tintColor="#ffffff"
+                  fallback={<Text style={styles.primaryIconFallback}>+</Text>}
+                />
+                <ThemedText type="smallBold" style={styles.primaryButtonText}>
+                  支出を登録
+                </ThemedText>
+              </Pressable>
+            </View>
+          </ThemedView>
+        ) : null}
+        <BottomNav />
       </SafeAreaView>
     </ThemedView>
   );
@@ -503,6 +566,14 @@ function getStatusBadgeTone(status: ExpenseStatus) {
   return 'neutral';
 }
 
+function formatMemberRole(role: RoomMemberRecord['role']) {
+  return role === 'admin' ? '管理者' : '参加者';
+}
+
+function formatMemberStatus(status: RoomMemberRecord['status']) {
+  return status === 'joined' ? '参加中' : '招待中';
+}
+
 function formatTargets(expense: ExpenseListItem) {
   if (expense.expense_type === 'common') {
     return '全体';
@@ -528,41 +599,61 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.four,
   },
   scrollContent: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
   },
   container: {
     width: '100%',
     maxWidth: MaxContentWidth,
     gap: Spacing.four,
   },
-  header: {
-    gap: Spacing.two,
-  },
-  actions: {
+  backLink: {
+    minHeight: 32,
+    alignSelf: 'flex-start',
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  header: {
     gap: Spacing.two,
   },
   primaryButton: {
     minHeight: 48,
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.control,
-    borderWidth: 1,
+    gap: Spacing.two,
     paddingHorizontal: Spacing.four,
   },
-  secondaryButton: {
-    minHeight: 48,
+  primaryButtonText: {
+    color: '#ffffff',
+  },
+  primaryIconFallback: {
+    color: '#ffffff',
+    fontSize: 18,
+    lineHeight: 18,
+  },
+  actionFooter: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.two,
+  },
+  actionFooterInner: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    flexDirection: 'row',
+    gap: Spacing.two,
   },
   card: {
     gap: Spacing.three,
@@ -640,6 +731,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  badgeRowCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
   badge: {
     borderRadius: Radius.pill,
     paddingHorizontal: Spacing.two,
@@ -658,6 +755,30 @@ const styles = StyleSheet.create({
     minWidth: 160,
     flex: 1,
     gap: Spacing.one,
+  },
+  memberList: {
+    gap: Spacing.two,
+  },
+  memberRow: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    padding: Spacing.three,
+  },
+  memberMain: {
+    minWidth: 0,
+    flex: 1,
+    gap: Spacing.one,
+  },
+  memberName: {
+    flexShrink: 1,
+  },
+  memberEmail: {
+    flexShrink: 1,
   },
   emptyCard: {
     padding: Spacing.five,
