@@ -81,27 +81,6 @@ export default function RoomsScreen() {
               </ThemedText>
             </ThemedView>
 
-            <Pressable
-              onPress={() => router.push('/rooms/new')}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: theme.primary },
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.buttonContent}>
-                <SymbolView
-                  name={{ ios: 'plus', android: 'add', web: 'add' }}
-                  size={18}
-                  tintColor="#ffffff"
-                  fallback={<Text style={styles.buttonIconFallback}>+</Text>}
-                />
-                <ThemedText type="default" style={styles.primaryButtonText}>
-                  新しくRoomを作成
-                </ThemedText>
-              </View>
-            </Pressable>
-
             {isLoading ? (
               <InfoCard title="読み込み中">
                 ログイン中ユーザーに紐づくroomを取得しています。
@@ -135,14 +114,49 @@ export default function RoomsScreen() {
             ) : null}
 
             {!isLoading && rooms.length > 0 ? (
-              <View style={styles.roomList}>
-                {rooms.map((room) => (
-                  <RoomCard key={room.id} room={room} />
-                ))}
-              </View>
+              <>
+                <View style={styles.listHeader}>
+                  <ThemedText type="smallBold">Room一覧</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {rooms.length}件
+                  </ThemedText>
+                </View>
+                <View style={styles.roomList}>
+                  {rooms.map((room) => (
+                    <RoomCard key={room.id} room={room} />
+                  ))}
+                </View>
+              </>
             ) : null}
           </ThemedView>
         </ScrollView>
+        <ThemedView
+          type="backgroundElement"
+          style={[styles.createFooter, { borderTopColor: theme.border }]}
+        >
+          <View style={styles.createFooterInner}>
+            <Pressable
+              onPress={() => router.push('/rooms/new')}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                { backgroundColor: theme.primary },
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={styles.buttonContent}>
+                <SymbolView
+                  name={{ ios: 'plus', android: 'add', web: 'add' }}
+                  size={18}
+                  tintColor="#ffffff"
+                  fallback={<Text style={styles.buttonIconFallback}>+</Text>}
+                />
+                <ThemedText type="default" style={styles.primaryButtonText}>
+                  新しくRoomを作成
+                </ThemedText>
+              </View>
+            </Pressable>
+          </View>
+        </ThemedView>
         <BottomNav />
       </SafeAreaView>
     </ThemedView>
@@ -154,17 +168,19 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
   const theme = useTheme();
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[styles.roomCard, { borderColor: theme.border }, Shadows.card]}
+    <Pressable
+      onPress={() => router.push(`/rooms/${room.id}` as never)}
+      style={({ pressed }) => [
+        styles.roomCard,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.border,
+        },
+        Shadows.card,
+        pressed && styles.pressed,
+      ]}
     >
-      <Pressable
-        onPress={() => router.push(`/rooms/${room.id}` as never)}
-        style={({ pressed }) => [
-          styles.roomCardHeader,
-          pressed && styles.pressed,
-        ]}
-      >
+      <View style={styles.roomCardHeader}>
         <View style={styles.roomIdentity}>
           <View
             style={[styles.roomIcon, { backgroundColor: theme.primarySoft }]}
@@ -191,7 +207,7 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
               {room.name}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              支出一覧を開く
+              Room詳細と支出一覧を開く
             </ThemedText>
           </View>
         </View>
@@ -205,7 +221,7 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
           tintColor={theme.textDisabled}
           fallback={<Text style={{ color: theme.textDisabled }}>›</Text>}
         />
-      </Pressable>
+      </View>
 
       <ThemedText type="small" themeColor="textSecondary">
         {room.description || '説明はまだ登録されていません。'}
@@ -217,38 +233,12 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
         <Meta label="状態" value={formatMemberStatus(room)} />
       </View>
 
-      <View style={styles.roomActions}>
-        <Pressable
-          onPress={() => router.push(`/rooms/${room.id}/expenses/new` as never)}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            styles.roomActionButton,
-            { backgroundColor: theme.primary },
-            pressed && styles.pressed,
-          ]}
-        >
-          <ThemedText type="default" style={styles.primaryButtonText}>
-            支出を登録する
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          onPress={() => router.push(`/rooms/${room.id}/members` as never)}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            styles.roomActionButton,
-            { borderColor: theme.primary },
-            pressed && styles.pressed,
-          ]}
-        >
-          <ThemedText
-            type="default"
-            style={{ color: theme.primary, fontWeight: 'bold' }}
-          >
-            参加者
-          </ThemedText>
-        </Pressable>
+      <View style={styles.openHint}>
+        <ThemedText type="smallBold" style={{ color: theme.primary }}>
+          Roomを開く
+        </ThemedText>
       </View>
-    </ThemedView>
+    </Pressable>
   );
 }
 
@@ -327,6 +317,12 @@ const styles = StyleSheet.create({
   roomList: {
     gap: Spacing.three,
   },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
   roomCard: {
     gap: Spacing.three,
     borderWidth: 1,
@@ -378,14 +374,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.one,
   },
-  roomActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  roomActionButton: {
-    flexGrow: 1,
-  },
   primaryButton: {
     minHeight: 48,
     alignItems: 'center',
@@ -408,13 +396,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 18,
   },
-  secondaryButton: {
-    minHeight: 48,
+  createFooter: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  createFooterInner: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+  },
+  openHint: {
+    alignItems: 'flex-end',
   },
   emptyCard: {
     padding: Spacing.five,

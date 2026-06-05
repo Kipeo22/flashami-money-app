@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
@@ -367,6 +368,7 @@ export default function RoomCreateScreen() {
             </View>
           </ThemedView>
         </ScrollView>
+        <BottomNav />
       </SafeAreaView>
     </ThemedView>
   );
@@ -396,12 +398,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.four,
   },
   scrollContent: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.four,
   },
   container: {
     width: '100%',
