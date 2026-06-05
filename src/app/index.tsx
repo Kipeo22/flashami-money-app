@@ -9,12 +9,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppPreferences } from '@/lib/app-preferences';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { appMode } = useAppPreferences();
   const [rooms, setRooms] = useState<UserRoomRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,21 @@ export default function HomeScreen() {
         (room) => room.start_date !== null && room.start_date > todayIso,
       ) ?? null,
     [rooms, todayIso],
+  );
+  const pastRooms = useMemo(
+    () =>
+      rooms
+        .filter((room) => room.end_date !== null && room.end_date < todayIso)
+        .sort((firstRoom, secondRoom) =>
+          secondRoom.end_date && firstRoom.end_date
+            ? secondRoom.end_date.localeCompare(firstRoom.end_date)
+            : secondRoom.name.localeCompare(firstRoom.name),
+        ),
+    [rooms, todayIso],
+  );
+  const activeAdminRooms = useMemo(
+    () => activeRooms.filter((room) => room.member_role === 'admin'),
+    [activeRooms],
   );
 
   useEffect(() => {
@@ -92,10 +109,12 @@ export default function HomeScreen() {
                 Flashami Money
               </ThemedText>
               <ThemedText type="title" style={styles.screenTitle}>
-                開催中のイベント
+                {appMode === 'admin' ? '開催中のイベント' : '支出入力'}
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                今日使う room を選ぶと、そのまま支出を登録できます。
+                {appMode === 'admin'
+                  ? '開催中のイベントを基準に、入力と管理へ移動できます。'
+                  : '開催中のイベントを選ぶと、そのまま支出を登録できます。'}
               </ThemedText>
             </ThemedView>
 
@@ -202,6 +221,17 @@ export default function HomeScreen() {
               </ThemedView>
             ) : null}
 
+            {appMode === 'admin' && activeAdminRooms.length > 0 ? (
+              <ThemedView style={styles.section}>
+                <ThemedText type="smallBold">開催中の管理イベント</ThemedText>
+                <View style={styles.roomList}>
+                  {activeAdminRooms.map((room) => (
+                    <AdminRoomRow key={room.id} room={room} />
+                  ))}
+                </View>
+              </ThemedView>
+            ) : null}
+
             {isLoading ? (
               <ThemedView
                 type="backgroundElement"
@@ -235,39 +265,57 @@ export default function HomeScreen() {
             ) : null}
 
             {!isLoading && !error && activeRooms.length === 0 ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[
-                  styles.emptyCard,
-                  { borderColor: theme.border },
-                  Shadows.card,
-                ]}
-              >
-                <ThemedText type="default" style={styles.emptyTitle}>
-                  開催中のイベントはありません
-                </ThemedText>
-                <ThemedText
-                  type="small"
-                  themeColor="textSecondary"
-                  style={styles.emptyDescription}
-                >
-                  {nextRoom
-                    ? `次の予定: ${nextRoom.name} (${formatRoomPeriod(nextRoom)})`
-                    : '参加済み room から支出履歴や今後の予定を確認できます。'}
-                </ThemedText>
-                <Pressable
-                  onPress={() => router.push('/rooms')}
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.primary },
-                    pressed && styles.pressed,
+              <>
+                <ThemedView
+                  type="backgroundElement"
+                  style={[
+                    styles.emptyCard,
+                    { borderColor: theme.border },
+                    Shadows.card,
                   ]}
                 >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    参加済みroomを見る
+                  <ThemedText type="default" style={styles.emptyTitle}>
+                    開催中のイベントはありません
                   </ThemedText>
-                </Pressable>
-              </ThemedView>
+                  <ThemedText
+                    type="small"
+                    themeColor="textSecondary"
+                    style={styles.emptyDescription}
+                  >
+                    {nextRoom
+                      ? `次の予定: ${nextRoom.name} (${formatRoomPeriod(nextRoom)})`
+                      : '過去参加したイベントや支出履歴を確認できます。'}
+                  </ThemedText>
+                  <Pressable
+                    onPress={() => router.push('/rooms')}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      { borderColor: theme.primary },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText
+                      type="smallBold"
+                      style={{ color: theme.primary }}
+                    >
+                      参加イベント一覧を見る
+                    </ThemedText>
+                  </Pressable>
+                </ThemedView>
+
+                {pastRooms.length > 0 ? (
+                  <ThemedView style={styles.section}>
+                    <ThemedText type="smallBold">
+                      過去参加したイベント
+                    </ThemedText>
+                    <View style={styles.roomList}>
+                      {pastRooms.slice(0, 5).map((room) => (
+                        <HistoryRoomRow key={room.id} room={room} />
+                      ))}
+                    </View>
+                  </ThemedView>
+                ) : null}
+              </>
             ) : null}
           </ThemedView>
         </ScrollView>
@@ -306,6 +354,74 @@ function RoomRow({ room }: { room: UserRoomRecord }) {
         size={26}
         tintColor={theme.primary}
         fallback={<Text style={{ color: theme.primary, fontSize: 24 }}>+</Text>}
+      />
+    </Pressable>
+  );
+}
+
+function HistoryRoomRow({ room }: { room: UserRoomRecord }) {
+  const router = useRouter();
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => router.push(`/rooms/${room.id}` as never)}
+      style={({ pressed }) => [
+        styles.roomRow,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        Shadows.card,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.roomRowMain}>
+        <ThemedText type="smallBold">{room.name}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {formatRoomPeriod(room)}・支出{room.expense_count}件
+        </ThemedText>
+      </View>
+      <SymbolView
+        name={{
+          ios: 'chevron.right',
+          android: 'chevron_right',
+          web: 'chevron_right',
+        }}
+        size={20}
+        tintColor={theme.textDisabled}
+        fallback={<Text style={{ color: theme.textDisabled }}>›</Text>}
+      />
+    </Pressable>
+  );
+}
+
+function AdminRoomRow({ room }: { room: UserRoomRecord }) {
+  const router = useRouter();
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => router.push('/admin/rooms' as never)}
+      style={({ pressed }) => [
+        styles.roomRow,
+        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+        Shadows.card,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.roomRowMain}>
+        <ThemedText type="smallBold">{room.name}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {formatRoomPeriod(room)}・管理対象
+        </ThemedText>
+      </View>
+      <SymbolView
+        name={{
+          ios: 'checklist',
+          android: 'assignment_turned_in',
+          web: 'assignment_turned_in',
+        }}
+        size={24}
+        tintColor={theme.primary}
+        fallback={<Text style={{ color: theme.primary }}>管理</Text>}
       />
     </Pressable>
   );

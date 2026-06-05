@@ -1,37 +1,63 @@
 import { SymbolView } from 'expo-symbols';
 import { usePathname, useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppPreferences, type AppMode } from '@/lib/app-preferences';
 
-const navItems = [
+const navItems: {
+  href: string;
+  isActive: (pathname: string) => boolean;
+  label: string;
+  modes: AppMode[];
+  symbol: ComponentProps<typeof SymbolView>['name'];
+}[] = [
   {
     href: '/',
     isActive: (pathname: string) => pathname === '/',
-    label: 'ホーム',
+    label: '入力',
+    modes: ['participant', 'admin'],
     symbol: { ios: 'house', android: 'home', web: 'home' },
   },
   {
     href: '/rooms',
     isActive: (pathname: string) => pathname.startsWith('/rooms'),
     label: 'Room',
+    modes: ['admin'],
     symbol: { ios: 'person.3', android: 'groups', web: 'groups' },
+  },
+  {
+    href: '/admin',
+    isActive: (pathname: string) => pathname.startsWith('/admin'),
+    label: '管理',
+    modes: ['admin'],
+    symbol: {
+      ios: 'checklist',
+      android: 'assignment_turned_in',
+      web: 'assignment_turned_in',
+    },
   },
   {
     href: '/settings',
     isActive: (pathname: string) => pathname === '/settings',
     label: '設定',
+    modes: ['participant', 'admin'],
     symbol: { ios: 'gearshape', android: 'settings', web: 'settings' },
   },
-] as const;
+];
 
 export function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
+  const { appMode } = useAppPreferences();
+  const visibleNavItems = navItems.filter((item) =>
+    item.modes.includes(appMode),
+  );
 
   return (
     <ThemedView
@@ -42,7 +68,7 @@ export function BottomNav() {
         Shadows.tabBar,
       ]}
     >
-      {navItems.map((item) => {
+      {visibleNavItems.map((item) => {
         const isActive = item.isActive(pathname);
         const color = isActive ? theme.primary : theme.textSecondary;
 
