@@ -123,7 +123,7 @@ export function BottomNav() {
             android: 'add_circle',
             web: 'add_circle',
           }}
-          size={30}
+          size={26}
           tintColor="#ffffff"
           type="hierarchical"
           fallback={
@@ -227,12 +227,12 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.one,
   },
   container: {
     width: '100%',
-    minHeight: 74,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     ...(webFallbackGlass ?? {}),
   },
   item: {
-    minHeight: 54,
+    minHeight: 46,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -261,25 +261,25 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   compactItem: {
-    minHeight: 56,
+    minHeight: 46,
     paddingHorizontal: Spacing.two,
   },
   actionButton: {
-    width: 88,
-    height: 88,
+    width: 68,
+    height: 68,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.two,
-    borderRadius: 44,
-    transform: [{ translateY: -14 }],
+    gap: Spacing.one,
+    borderRadius: 34,
+    transform: [{ translateY: -10 }],
   },
   actionLabel: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   actionIconFallback: {
-    fontSize: 30,
-    lineHeight: 30,
+    fontSize: 26,
+    lineHeight: 26,
   },
   actionPressed: {
     opacity: 0.82,
