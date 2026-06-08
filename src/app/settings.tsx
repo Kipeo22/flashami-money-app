@@ -9,15 +9,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAppPreferences, type AppMode } from '@/lib/app-preferences';
 import { signOut } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { appMode, setAppMode } = useAppPreferences();
   const [email, setEmail] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isSavingMode, setIsSavingMode] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -63,6 +66,19 @@ export default function SettingsScreen() {
       );
     } finally {
       setIsSigningOut(false);
+    }
+  };
+
+  const handleAppModeChange = async (mode: AppMode) => {
+    setIsSavingMode(true);
+    setFeedback(null);
+
+    try {
+      await setAppMode(mode);
+    } catch {
+      setFeedback('表示モードを保存できませんでした。');
+    } finally {
+      setIsSavingMode(false);
     }
   };
 
@@ -114,6 +130,37 @@ export default function SettingsScreen() {
                     {email ?? 'メールアドレスを取得中'}
                   </ThemedText>
                 </View>
+              </View>
+            </ThemedView>
+
+            <ThemedView
+              type="backgroundElement"
+              style={[styles.card, { borderColor: theme.border }, Shadows.card]}
+            >
+              <View style={styles.sectionHeader}>
+                <ThemedText type="smallBold">表示モード</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {isSavingMode ? '保存中' : '端末ごとに保存'}
+                </ThemedText>
+              </View>
+
+              <ThemedText type="small" themeColor="textSecondary">
+                参加者モードでは支出入力を優先し、Room一覧や承認画面を下部メニューに表示しません。
+              </ThemedText>
+
+              <View style={styles.modeOptions}>
+                <ModeOption
+                  description="開催中イベントの支出登録を最優先します。"
+                  isSelected={appMode === 'participant'}
+                  label="参加者"
+                  onPress={() => handleAppModeChange('participant')}
+                />
+                <ModeOption
+                  description="Room管理、承認、支出確認を表示します。"
+                  isSelected={appMode === 'admin'}
+                  label="管理者"
+                  onPress={() => handleAppModeChange('admin')}
+                />
               </View>
             </ThemedView>
 
@@ -179,6 +226,60 @@ export default function SettingsScreen() {
   );
 }
 
+function ModeOption({
+  description,
+  isSelected,
+  label,
+  onPress,
+}: {
+  description: string;
+  isSelected: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.modeOption,
+        {
+          backgroundColor: isSelected ? theme.primarySoft : theme.background,
+          borderColor: isSelected ? theme.primary : theme.border,
+        },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.radio,
+          {
+            borderColor: isSelected ? theme.primary : theme.textDisabled,
+          },
+        ]}
+      >
+        {isSelected ? (
+          <View style={[styles.radioDot, { backgroundColor: theme.primary }]} />
+        ) : null}
+      </View>
+      <View style={styles.modeOptionText}>
+        <ThemedText
+          type="smallBold"
+          style={{ color: isSelected ? theme.primary : theme.text }}
+        >
+          {label}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {description}
+        </ThemedText>
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -228,6 +329,43 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flex: 1,
     gap: Spacing.one,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  modeOptions: {
+    gap: Spacing.two,
+  },
+  modeOption: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    borderWidth: 1,
+    borderRadius: Radius.control,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  modeOptionText: {
+    minWidth: 0,
+    flex: 1,
+    gap: Spacing.one,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderRadius: 11,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   logoutRow: {
     minHeight: 52,

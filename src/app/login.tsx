@@ -64,9 +64,9 @@ export default function LoginScreen() {
         );
       }
 
-      await sendMagicLink(email);
+      const redirectUrl = await sendMagicLink(email);
       setFeedback(
-        'メールを送信しました。リンクを開くか、6桁コードを入力してください。',
+        `メールを送信しました。メール内のリンクを開くか、認証コードを入力してください。${__DEV__ ? `\n\nRedirect URL:\n${redirectUrl}` : ''}`,
       );
     } catch (error) {
       setFeedback(
@@ -161,7 +161,7 @@ export default function LoginScreen() {
                 >
                   {submittingAction === 'link'
                     ? '送信中...'
-                    : 'ログインリンクを送信'}
+                    : 'ログインメールを送信'}
                 </ThemedText>
               </Pressable>
 
