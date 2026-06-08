@@ -1,6 +1,5 @@
 import '@/global.css';
 
-import * as Linking from 'expo-linking';
 import {
   DarkTheme,
   DefaultTheme,
@@ -10,7 +9,7 @@ import {
 } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { Linking, useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AppPreferencesProvider } from '@/lib/app-preferences';
@@ -63,16 +62,22 @@ export default function RootLayout() {
 }
 
 function AuthLinkHandler() {
-  const url = Linking.useLinkingURL();
   const router = useRouter();
 
   useEffect(() => {
     let active = true;
+    const handledUrls = new Set<string>();
 
-    async function restoreSession() {
+    async function restoreSession(url: string | null) {
       if (!url || !isSupabaseConfigured) {
         return;
       }
+
+      if (handledUrls.has(url)) {
+        return;
+      }
+
+      handledUrls.add(url);
 
       try {
         const didRestoreSession = await restoreSessionFromUrl(url);
@@ -84,12 +89,21 @@ function AuthLinkHandler() {
       }
     }
 
-    restoreSession();
+    Linking.getInitialURL()
+      .then((url) => restoreSession(url))
+      .catch(() => {
+        // If initial URL lookup fails, explicit login actions still work.
+      });
+
+    const subscription = Linking.addEventListener('url', (event) => {
+      restoreSession(event.url);
+    });
 
     return () => {
       active = false;
+      subscription.remove();
     };
-  }, [router, url]);
+  }, [router]);
 
   return null;
 }

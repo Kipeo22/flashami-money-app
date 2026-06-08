@@ -3,8 +3,10 @@ import { Platform } from 'react-native';
 
 import { getSupabaseClient } from '@/lib/supabase';
 
+const authCallbackPath = 'auth/callback';
+
 export function getAuthRedirectUrl() {
-  return Linking.createURL('');
+  return Linking.createURL(authCallbackPath);
 }
 
 export async function sendMagicLink(email: string) {
@@ -15,10 +17,12 @@ export async function sendMagicLink(email: string) {
     throw new Error('メールアドレスを入力してください。');
   }
 
+  const redirectUrl = getAuthRedirectUrl();
+
   const { error } = await supabase.auth.signInWithOtp({
     email: normalizedEmail,
     options: {
-      emailRedirectTo: getAuthRedirectUrl(),
+      emailRedirectTo: redirectUrl,
       shouldCreateUser: true,
     },
   });
@@ -26,6 +30,8 @@ export async function sendMagicLink(email: string) {
   if (error) {
     throw error;
   }
+
+  return redirectUrl;
 }
 
 export async function verifyEmailOtp(email: string, token: string) {
@@ -41,15 +47,24 @@ export async function verifyEmailOtp(email: string, token: string) {
     throw new Error('6桁の認証コードを入力してください。');
   }
 
-  const { error } = await supabase.auth.verifyOtp({
-    email: normalizedEmail,
-    token: normalizedToken,
-    type: 'email',
-  });
+  const otpTypes = ['email', 'signup'] as const;
+  let lastError: unknown = null;
 
-  if (error) {
-    throw error;
+  for (const type of otpTypes) {
+    const { error } = await supabase.auth.verifyOtp({
+      email: normalizedEmail,
+      token: normalizedToken,
+      type,
+    });
+
+    if (!error) {
+      return;
+    }
+
+    lastError = error;
   }
+
+  throw lastError;
 }
 
 export async function signOut() {
@@ -76,6 +91,21 @@ export async function restoreSessionFromUrl(url: string) {
     const { error } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return true;
+  }
+
+  const tokenHash = params.get('token_hash');
+  const type = params.get('type') ?? 'email';
+  if (tokenHash) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type,
     });
 
     if (error) {
