@@ -910,13 +910,16 @@ function OptionButton({
       style={({ pressed }) => [
         styles.optionButton,
         {
-          backgroundColor: isSelected ? theme.primarySoft : 'transparent',
-          borderColor: theme.primary,
+          backgroundColor: isSelected ? theme.primarySoft : theme.background,
+          borderColor: isSelected ? theme.primary : theme.border,
         },
         pressed && styles.pressed,
       ]}
     >
-      <ThemedText type="smallBold" style={{ color: theme.primary }}>
+      <ThemedText
+        type="smallBold"
+        style={{ color: isSelected ? theme.primary : theme.textSecondary }}
+      >
         {label}
       </ThemedText>
     </Pressable>
@@ -961,8 +964,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -970,17 +973,17 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   form: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   sectionHeader: {
@@ -994,14 +997,14 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
   },
   textArea: {
     minHeight: 96,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
@@ -1016,16 +1019,16 @@ const styles = StyleSheet.create({
   optionButton: {
     minHeight: 44,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
   errorText: {
-    color: '#e01e5a',
+    color: '#ff3b30',
   },
   memberList: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   receiptActions: {
     flexDirection: 'row',
@@ -1034,7 +1037,7 @@ const styles = StyleSheet.create({
   },
   receiptInfo: {
     gap: Spacing.one,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   receiptPreview: {
@@ -1046,8 +1049,8 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.panel,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.three,
   },
   memberRow: {
@@ -1055,8 +1058,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   memberMain: {
@@ -1076,30 +1079,30 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   button: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.panel,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.panel,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.three,
   },
   ghostButton: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.62,
   },
 });

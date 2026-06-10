@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
   },
   closeButton: {
     width: 40,
@@ -580,14 +580,14 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.three,
   },
   feedbackBox: {
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   field: {
     gap: Spacing.two,
   },
   handle: {
-    width: 48,
+    width: 38,
     height: 5,
     alignSelf: 'center',
     borderRadius: 3,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 48,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.control,
     fontSize: 16,
     paddingHorizontal: Spacing.three,
@@ -618,8 +618,8 @@ const styles = StyleSheet.create({
   optionButton: {
     minHeight: 38,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
   },
   optionRow: {
@@ -628,8 +628,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.62,
   },
   receiptActions: {
     flexDirection: 'row',
@@ -653,8 +652,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
   },
   sheet: {
@@ -663,20 +662,20 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     gap: Spacing.three,
-    borderWidth: 1,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: Spacing.three,
   },
   submitButton: {
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.panel,
   },
   textArea: {
     minHeight: 84,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.control,
     fontSize: 16,
     paddingHorizontal: Spacing.three,

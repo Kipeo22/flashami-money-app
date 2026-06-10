@@ -545,8 +545,8 @@ function formatTargets(expense: AdminExpenseItem['expense']) {
 const styles = StyleSheet.create({
   card: {
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   backLink: {
@@ -560,8 +560,8 @@ const styles = StyleSheet.create({
     minWidth: 220,
     flex: 1,
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   summaryTileHeader: {
@@ -589,8 +589,8 @@ const styles = StyleSheet.create({
   },
   reviewItem: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   reviewHeader: {
@@ -638,13 +638,13 @@ const styles = StyleSheet.create({
   },
   noReceiptBox: {
     gap: Spacing.one,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   textArea: {
     minHeight: 80,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     fontSize: 16,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
   },
   primaryActionButtonText: {
@@ -671,14 +671,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
   },
   roomItem: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   roomIdentity: {
@@ -707,11 +707,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.62,
   },
 });

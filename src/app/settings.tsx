@@ -293,8 +293,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -302,14 +302,14 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   screenTitle: {
-    lineHeight: 40,
+    lineHeight: 41,
   },
   card: {
     gap: Spacing.three,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
     padding: Spacing.three,
   },
@@ -344,8 +344,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
@@ -376,7 +376,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.62,
   },
 });

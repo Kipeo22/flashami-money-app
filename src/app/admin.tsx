@@ -11,7 +11,7 @@ import {
 import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   fetchAdminRoomDashboards,
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -214,10 +214,10 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   screenTitle: {
-    lineHeight: 40,
+    lineHeight: 41,
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
     padding: Spacing.five,
   },
   emptyTitle: {

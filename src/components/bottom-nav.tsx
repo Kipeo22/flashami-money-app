@@ -7,7 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { QuickExpenseModal } from '@/components/quick-expense-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useAppPreferences, type AppMode } from '@/lib/app-preferences';
 
@@ -79,7 +79,6 @@ export function BottomNav() {
         style={({ pressed }) => [
           styles.item,
           isCompactNav && styles.compactItem,
-          isActive && { backgroundColor: theme.primarySoft },
           pressed && styles.pressed,
         ]}
       >
@@ -226,52 +225,51 @@ const styles = StyleSheet.create({
   shell: {
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.two,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.one,
   },
   container: {
     width: '100%',
-    minHeight: 56,
+    minHeight: 64,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
     overflow: 'visible',
-    borderRadius: Radius.pill,
+    borderRadius: 24,
     paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.one,
   },
   compactContainer: {
-    maxWidth: 430,
+    maxWidth: 360,
   },
   wideContainer: {
     maxWidth: MaxContentWidth,
   },
   fallbackContainer: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     ...(webFallbackGlass ?? {}),
   },
   item: {
-    minHeight: 46,
+    minHeight: 54,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: 16,
     paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.one,
   },
   compactItem: {
-    minHeight: 46,
-    paddingHorizontal: Spacing.two,
+    minHeight: 54,
+    paddingHorizontal: Spacing.one,
   },
   actionButton: {
-    width: 68,
-    height: 68,
+    width: 62,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
-    borderRadius: 34,
-    transform: [{ translateY: -10 }],
+    borderRadius: 16,
   },
   actionLabel: {
     fontSize: 12,
@@ -283,15 +281,14 @@ const styles = StyleSheet.create({
   },
   actionPressed: {
     opacity: 0.82,
-    transform: [{ scale: 0.96 }],
   },
   label: {
     fontSize: 11,
     lineHeight: 16,
   },
   compactLabel: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 11,
+    lineHeight: 16,
   },
   fallbackIcon: {
     fontSize: 18,

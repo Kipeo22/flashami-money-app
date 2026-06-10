@@ -506,8 +506,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -515,17 +515,17 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   alert: {
     gap: Spacing.one,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   card: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   sectionHeader: {
@@ -535,13 +535,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   inlineFeedback: {
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   textArea: {
     minHeight: 96,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
     fontSize: 16,
@@ -553,12 +553,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   reviewButton: {
-    minHeight: 48,
+    minHeight: 50,
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.panel,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.four,
   },
   detailRow: {
@@ -574,21 +574,21 @@ const styles = StyleSheet.create({
   receiptImage: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
   },
   noReceipt: {
     gap: Spacing.one,
   },
   targetList: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   targetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   targetMain: {
@@ -601,14 +601,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   ghostButton: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.62,
   },
 });

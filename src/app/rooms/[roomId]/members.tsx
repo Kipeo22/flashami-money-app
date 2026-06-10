@@ -304,8 +304,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   actions: {
     flexDirection: 'row',
@@ -321,28 +321,28 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   button: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
+    borderRadius: Radius.panel,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.62,
   },
   card: {
     gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   metaRow: {
@@ -362,13 +362,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   memberList: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   memberRow: {
     gap: Spacing.two,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   memberMain: {
     gap: 2,

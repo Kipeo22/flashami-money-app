@@ -605,8 +605,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -621,15 +621,15 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     gap: Spacing.two,
     paddingHorizontal: Spacing.four,
   },
@@ -647,7 +647,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingHorizontal: Spacing.three,
     paddingTop: Spacing.two,
-    paddingBottom: Spacing.two,
+    paddingBottom: Spacing.three,
   },
   actionFooterInner: {
     width: '100%',
@@ -657,8 +657,8 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   sectionHeader: {
@@ -676,8 +676,8 @@ const styles = StyleSheet.create({
     minWidth: 160,
     flex: 1,
     gap: Spacing.one,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   summaryValue: {
@@ -694,18 +694,18 @@ const styles = StyleSheet.create({
   filterButton: {
     minHeight: 40,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
   },
   expenseList: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   expenseCard: {
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   expenseHeader: {
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   memberList: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   memberRow: {
     minHeight: 64,
@@ -765,8 +765,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   memberMain: {
@@ -782,8 +782,8 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     padding: Spacing.five,
-    borderRadius: Radius.panel,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
@@ -796,6 +796,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.62,
   },
 });

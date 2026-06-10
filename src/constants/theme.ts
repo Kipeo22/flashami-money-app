@@ -7,38 +7,38 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#001435',
-    background: '#f5f7fa',
+    text: '#1c1c1e',
+    background: '#f2f2f7',
     backgroundElement: '#ffffff',
-    backgroundSelected: '#eef1f4',
-    border: '#e5e8ed',
-    brand: '#0070ba',
-    danger: '#d20021',
-    link: '#0070ba',
-    overBackground: '#f5f7fa',
-    primary: '#003087',
-    primarySoft: '#eaf2ff',
-    primaryPressed: '#001c64',
-    textDisabled: '#9da3a6',
-    textSecondary: '#687173',
-    warning: '#ffb81c',
+    backgroundSelected: '#e5e5ea',
+    border: '#d1d1d6',
+    brand: '#007aff',
+    danger: '#ff3b30',
+    link: '#007aff',
+    overBackground: '#f9f9fb',
+    primary: '#007aff',
+    primarySoft: '#e5f1ff',
+    primaryPressed: '#005ecb',
+    textDisabled: '#c7c7cc',
+    textSecondary: '#6e6e73',
+    warning: '#ff9500',
   },
   dark: {
-    text: '#ffffff',
-    background: '#0a0e1a',
-    backgroundElement: '#141a2a',
-    backgroundSelected: '#1f2740',
-    border: '#2a3142',
-    brand: '#3b82f6',
-    danger: '#ff5c6c',
-    link: '#69a7ff',
-    overBackground: '#1f2740',
-    primary: '#3b82f6',
-    primarySoft: '#182b4f',
-    primaryPressed: '#69a7ff',
-    textDisabled: '#687173',
-    textSecondary: '#a8aec4',
-    warning: '#ffb81c',
+    text: '#f5f5f7',
+    background: '#000000',
+    backgroundElement: '#1c1c1e',
+    backgroundSelected: '#2c2c2e',
+    border: '#38383a',
+    brand: '#0a84ff',
+    danger: '#ff453a',
+    link: '#0a84ff',
+    overBackground: '#2c2c2e',
+    primary: '#0a84ff',
+    primarySoft: '#102f52',
+    primaryPressed: '#64b5ff',
+    textDisabled: '#636366',
+    textSecondary: '#aeaeb2',
+    warning: '#ff9f0a',
   },
 } as const;
 
@@ -46,8 +46,8 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'Hiragino Sans',
+    /** Let iOS use San Francisco through the native system font. */
+    sans: undefined,
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     /** iOS `UIFontDescriptorSystemDesignRounded` */
@@ -80,8 +80,8 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  control: 12,
-  panel: 16,
+  control: 10,
+  panel: 14,
   pill: 999,
 } as const;
 
@@ -90,9 +90,9 @@ export const Shadows = {
     Platform.select({
       ios: {
         shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
       },
       android: {
         elevation: 2,
@@ -106,8 +106,8 @@ export const Shadows = {
       ios: {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: -1 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
       },
       android: {
         elevation: 8,
@@ -119,4 +119,4 @@ export const Shadows = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 620;

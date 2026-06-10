@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     maxWidth: Math.min(MaxContentWidth, 420),
     gap: Spacing.three,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
     padding: Spacing.four,
   },

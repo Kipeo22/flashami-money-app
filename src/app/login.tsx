@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
+    paddingVertical: Spacing.five,
   },
   container: {
     width: '100%',
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: Spacing.three,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
     padding: Spacing.four,
   },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 52,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
     fontSize: 16,
@@ -291,27 +291,26 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
   },
   secondaryButton: {
     minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   divider: {
     height: 1,
   },
   feedback: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.62,
   },
 });

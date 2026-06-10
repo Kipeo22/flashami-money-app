@@ -294,8 +294,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.five,
   },
   container: {
     width: '100%',
@@ -303,19 +303,19 @@ const styles = StyleSheet.create({
     gap: Spacing.four,
   },
   header: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   screenTitle: {
-    lineHeight: 40,
+    lineHeight: 41,
   },
   card: {
     gap: Spacing.two,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
     padding: Spacing.three,
   },
   roomList: {
-    gap: Spacing.three,
+    gap: Spacing.one,
   },
   listHeader: {
     flexDirection: 'row',
@@ -325,9 +325,9 @@ const styles = StyleSheet.create({
   },
   roomCard: {
     gap: Spacing.three,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: Radius.panel,
-    padding: Spacing.four,
+    padding: Spacing.three,
   },
   roomCardHeader: {
     flexDirection: 'row',
@@ -343,8 +343,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   roomIcon: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-    borderRadius: Radius.control,
+    borderRadius: Radius.panel,
     padding: Spacing.two,
   },
   metaItem: {
@@ -375,10 +375,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.pill,
+    borderRadius: Radius.panel,
     paddingHorizontal: Spacing.four,
   },
   primaryButtonText: {
@@ -401,7 +401,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingTop: Spacing.two,
+    paddingBottom: Spacing.three,
   },
   createFooterInner: {
     width: '100%',
@@ -412,8 +413,8 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     padding: Spacing.five,
-    borderRadius: Radius.panel,
-    borderWidth: 1,
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.two,
@@ -427,7 +428,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.62,
   },
 });
