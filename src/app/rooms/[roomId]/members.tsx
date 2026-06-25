@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   fetchRoomById,
   fetchRoomMembers,
@@ -14,7 +15,6 @@ import {
   type RoomRecord,
 } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { useTheme } from '@/hooks/use-theme';
 
 export default function RoomMembersScreen() {
   const { roomId } = useLocalSearchParams<{ roomId?: string }>();
@@ -81,8 +81,11 @@ export default function RoomMembersScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="subtitle">メンバー</ThemedText>
@@ -264,8 +267,8 @@ export default function RoomMembersScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -313,7 +316,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

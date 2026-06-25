@@ -14,6 +14,7 @@ import { BottomNav } from '@/components/bottom-nav';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   fetchAdminRoomDashboards,
   flattenAdminExpenses,
@@ -21,7 +22,6 @@ import {
 } from '@/lib/admin';
 import { summarizeExpenses, type ExpenseStatus } from '@/lib/expenses';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { useTheme } from '@/hooks/use-theme';
 
 const expenseStatuses: ExpenseStatus[] = [
   'pending',
@@ -109,8 +109,11 @@ export default function AdminExpensesScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <AdminBackLink onPress={() => router.replace('/admin')} />
 
@@ -174,8 +177,8 @@ export default function AdminExpensesScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -204,7 +207,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

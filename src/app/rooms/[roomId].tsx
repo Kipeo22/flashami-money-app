@@ -1,5 +1,5 @@
-import { SymbolView } from 'expo-symbols';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -168,8 +168,11 @@ export default function RoomExpenseListScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <Pressable
               onPress={() => router.replace('/rooms')}
@@ -642,15 +645,15 @@ export default function RoomExpenseListScreen() {
             </View>
           </ThemedView>
         ) : null}
-        <BottomNav />
-        {resolvedRoomId ? (
-          <TaskSheetModal
-            activeRoomIds={[resolvedRoomId]}
-            onClose={() => setIsTaskSheetVisible(false)}
-            visible={isTaskSheetVisible}
-          />
-        ) : null}
       </SafeAreaView>
+      <BottomNav />
+      {resolvedRoomId ? (
+        <TaskSheetModal
+          activeRoomIds={[resolvedRoomId]}
+          onClose={() => setIsTaskSheetVisible(false)}
+          visible={isTaskSheetVisible}
+        />
+      ) : null}
     </ThemedView>
   );
 }
@@ -918,7 +921,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

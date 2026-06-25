@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
     padding: Spacing.three,
   },
