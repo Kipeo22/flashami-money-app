@@ -5,42 +5,26 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
+import { QuickExpenseModal } from '@/components/quick-expense-modal';
+import { TaskSheetModal } from '@/components/task-sheet-modal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAppPreferences } from '@/lib/app-preferences';
 import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { appMode } = useAppPreferences();
   const [rooms, setRooms] = useState<UserRoomRecord[]>([]);
+  const [isQuickExpenseVisible, setIsQuickExpenseVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTaskSheetVisible, setIsTaskSheetVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const todayIso = useMemo(() => getTodayIsoDate(), []);
   const activeRooms = useMemo(
     () => rooms.filter((room) => isRoomActive(room, todayIso)),
-    [rooms, todayIso],
-  );
-  const nextRoom = useMemo(
-    () =>
-      rooms.find(
-        (room) => room.start_date !== null && room.start_date > todayIso,
-      ) ?? null,
-    [rooms, todayIso],
-  );
-  const pastRooms = useMemo(
-    () =>
-      rooms
-        .filter((room) => room.end_date !== null && room.end_date < todayIso)
-        .sort((firstRoom, secondRoom) =>
-          secondRoom.end_date && firstRoom.end_date
-            ? secondRoom.end_date.localeCompare(firstRoom.end_date)
-            : secondRoom.name.localeCompare(firstRoom.name),
-        ),
     [rooms, todayIso],
   );
   const activeAdminRooms = useMemo(
@@ -109,20 +93,16 @@ export default function HomeScreen() {
                 Flashami Money
               </ThemedText>
               <ThemedText type="title" style={styles.screenTitle}>
-                {appMode === 'admin' ? '開催中のイベント' : '支出入力'}
+                ホーム
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                {appMode === 'admin'
-                  ? '開催中のイベントを基準に、入力と管理へ移動できます。'
-                  : '開催中のイベントを選ぶと、そのまま支出を登録できます。'}
+                開催中のイベントだけを表示します。
               </ThemedText>
             </ThemedView>
 
             {primaryRoom ? (
               <Pressable
-                onPress={() =>
-                  router.push(`/rooms/${primaryRoom.id}/expenses/new` as never)
-                }
+                onPress={() => router.push(`/rooms/${primaryRoom.id}` as never)}
                 style={({ pressed }) => [
                   styles.featureCard,
                   {
@@ -156,7 +136,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.featureTitleGroup}>
                       <ThemedText type="small" themeColor="textSecondary">
-                        入力先
+                        開催中
                       </ThemedText>
                       <ThemedText type="subtitle" style={styles.featureTitle}>
                         {primaryRoom.name}
@@ -201,16 +181,16 @@ export default function HomeScreen() {
                 >
                   <SymbolView
                     name={{
-                      ios: 'plus.circle.fill',
-                      android: 'add_circle',
-                      web: 'add_circle',
+                      ios: 'chevron.right.circle.fill',
+                      android: 'chevron_right',
+                      web: 'chevron_right',
                     }}
                     size={22}
                     tintColor="#ffffff"
                     fallback={<Text style={styles.primaryIconFallback}>+</Text>}
                   />
                   <ThemedText type="default" style={styles.primaryButtonText}>
-                    支出を入力
+                    イベントを開く
                   </ThemedText>
                 </View>
               </Pressable>
@@ -218,21 +198,10 @@ export default function HomeScreen() {
 
             {activeRooms.length > 1 ? (
               <ThemedView style={styles.section}>
-                <ThemedText type="smallBold">ほかの入力先</ThemedText>
+                <ThemedText type="smallBold">ほかの開催中イベント</ThemedText>
                 <View style={styles.roomList}>
                   {activeRooms.slice(1).map((room) => (
                     <RoomRow key={room.id} room={room} />
-                  ))}
-                </View>
-              </ThemedView>
-            ) : null}
-
-            {appMode === 'admin' && activeAdminRooms.length > 0 ? (
-              <ThemedView style={styles.section}>
-                <ThemedText type="smallBold">開催中の管理イベント</ThemedText>
-                <View style={styles.roomList}>
-                  {activeAdminRooms.map((room) => (
-                    <AdminRoomRow key={room.id} room={room} />
                   ))}
                 </View>
               </ThemedView>
@@ -288,9 +257,7 @@ export default function HomeScreen() {
                     themeColor="textSecondary"
                     style={styles.emptyDescription}
                   >
-                    {nextRoom
-                      ? `次の予定: ${nextRoom.name} (${formatRoomPeriod(nextRoom)})`
-                      : '過去参加したイベントや支出履歴を確認できます。'}
+                    イベントが始まると、ここから支出入力と確認タスクを開けます。
                   </ThemedText>
                   <Pressable
                     onPress={() => router.push('/rooms')}
@@ -308,69 +275,82 @@ export default function HomeScreen() {
                     </ThemedText>
                   </Pressable>
                 </ThemedView>
-
-                {pastRooms.length > 0 ? (
-                  <ThemedView style={styles.section}>
-                    <ThemedText type="smallBold">
-                      過去参加したイベント
-                    </ThemedText>
-                    <View style={styles.roomList}>
-                      {pastRooms.slice(0, 5).map((room) => (
-                        <HistoryRoomRow key={room.id} room={room} />
-                      ))}
-                    </View>
-                  </ThemedView>
-                ) : null}
               </>
             ) : null}
           </ThemedView>
         </ScrollView>
+        <View pointerEvents="box-none" style={styles.floatingActions}>
+          {activeAdminRooms.length > 0 ? (
+            <Pressable
+              accessibilityLabel="タスク"
+              onPress={() => setIsTaskSheetVisible(true)}
+              style={({ pressed }) => [
+                styles.taskFab,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                },
+                Shadows.card,
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{
+                  ios: 'checklist',
+                  android: 'assignment_turned_in',
+                  web: 'assignment_turned_in',
+                }}
+                size={22}
+                tintColor={theme.primary}
+                fallback={<Text style={{ color: theme.primary }}>□</Text>}
+              />
+              <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                タスク
+              </ThemedText>
+            </Pressable>
+          ) : null}
+
+          {primaryRoom ? (
+            <Pressable
+              accessibilityLabel="支出入力"
+              onPress={() => setIsQuickExpenseVisible(true)}
+              style={({ pressed }) => [
+                styles.addFab,
+                { backgroundColor: theme.primary },
+                Shadows.card,
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{
+                  ios: 'plus',
+                  android: 'add',
+                  web: 'add',
+                }}
+                size={30}
+                tintColor="#ffffff"
+                fallback={<Text style={styles.addFabFallback}>+</Text>}
+              />
+            </Pressable>
+          ) : null}
+        </View>
         <BottomNav />
+        <QuickExpenseModal
+          initialRoomId={primaryRoom?.id}
+          onClose={() => setIsQuickExpenseVisible(false)}
+          visible={isQuickExpenseVisible}
+        />
+        <TaskSheetModal
+          activeRoomIds={activeAdminRooms.map((room) => room.id)}
+          onClose={() => setIsTaskSheetVisible(false)}
+          visible={isTaskSheetVisible}
+        />
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 function RoomRow({ room }: { room: UserRoomRecord }) {
-  const router = useRouter();
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      onPress={() => router.push(`/rooms/${room.id}/expenses/new` as never)}
-      style={({ pressed }) => [
-        styles.roomRow,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-        Shadows.card,
-        pressed && styles.pressed,
-      ]}
-    >
-      <View style={styles.roomRowMain}>
-        <ThemedText type="smallBold">{room.name}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {formatRoomPeriod(room)}
-        </ThemedText>
-      </View>
-      <View style={[styles.inputPill, { backgroundColor: theme.primarySoft }]}>
-        <SymbolView
-          name={{
-            ios: 'plus',
-            android: 'add',
-            web: 'add',
-          }}
-          size={16}
-          tintColor={theme.primary}
-          fallback={<Text style={{ color: theme.primary }}>+</Text>}
-        />
-        <ThemedText type="smallBold" style={{ color: theme.primary }}>
-          入力
-        </ThemedText>
-      </View>
-    </Pressable>
-  );
-}
-
-function HistoryRoomRow({ room }: { room: UserRoomRecord }) {
   const router = useRouter();
   const theme = useTheme();
 
@@ -387,53 +367,24 @@ function HistoryRoomRow({ room }: { room: UserRoomRecord }) {
       <View style={styles.roomRowMain}>
         <ThemedText type="smallBold">{room.name}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
-          {formatRoomPeriod(room)}・支出{room.expense_count}件
+          {formatRoomPeriod(room)}
         </ThemedText>
       </View>
-      <SymbolView
-        name={{
-          ios: 'chevron.right',
-          android: 'chevron_right',
-          web: 'chevron_right',
-        }}
-        size={20}
-        tintColor={theme.textDisabled}
-        fallback={<Text style={{ color: theme.textDisabled }}>›</Text>}
-      />
-    </Pressable>
-  );
-}
-
-function AdminRoomRow({ room }: { room: UserRoomRecord }) {
-  const router = useRouter();
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      onPress={() => router.push('/admin/rooms' as never)}
-      style={({ pressed }) => [
-        styles.roomRow,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-        Shadows.card,
-        pressed && styles.pressed,
-      ]}
-    >
-      <View style={styles.roomRowMain}>
-        <ThemedText type="smallBold">{room.name}</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {formatRoomPeriod(room)}・管理対象
+      <View style={[styles.inputPill, { backgroundColor: theme.primarySoft }]}>
+        <SymbolView
+          name={{
+            ios: 'chevron.right',
+            android: 'chevron_right',
+            web: 'chevron_right',
+          }}
+          size={16}
+          tintColor={theme.primary}
+          fallback={<Text style={{ color: theme.primary }}>›</Text>}
+        />
+        <ThemedText type="smallBold" style={{ color: theme.primary }}>
+          開く
         </ThemedText>
       </View>
-      <SymbolView
-        name={{
-          ios: 'checklist',
-          android: 'assignment_turned_in',
-          web: 'assignment_turned_in',
-        }}
-        size={24}
-        tintColor={theme.primary}
-        fallback={<Text style={{ color: theme.primary }}>管理</Text>}
-      />
     </Pressable>
   );
 }
@@ -572,6 +523,37 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 20,
     lineHeight: 22,
+  },
+  addFab: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 30,
+  },
+  addFabFallback: {
+    color: '#ffffff',
+    fontSize: 30,
+    lineHeight: 32,
+  },
+  floatingActions: {
+    position: 'absolute',
+    right: Spacing.three,
+    bottom: 96,
+    left: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  taskFab: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.three,
   },
   secondaryButton: {
     minHeight: 48,

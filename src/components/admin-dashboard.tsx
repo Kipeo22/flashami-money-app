@@ -35,7 +35,7 @@ export function AdminInfoCard({
 }
 
 export function AdminBackLink({
-  label = '管理トップ',
+  label = 'やること',
   onPress,
 }: {
   label?: string;
@@ -146,7 +146,7 @@ export function AdminReviewItem({
   isUpdating: boolean;
   item: AdminExpenseItem;
   onApprove: () => void;
-  onOpenDetail: () => void;
+  onOpenDetail?: () => void;
   onReject: () => void;
   onRejectionReasonChange: (value: string) => void;
   rejectionReason: string;
@@ -256,18 +256,20 @@ export function AdminReviewItem({
           </ThemedText>
         </Pressable>
 
-        <Pressable
-          onPress={onOpenDetail}
-          style={({ pressed }) => [
-            styles.secondaryActionButton,
-            { borderColor: theme.primary },
-            pressed && styles.pressed,
-          ]}
-        >
-          <ThemedText type="smallBold" style={{ color: theme.primary }}>
-            詳細
-          </ThemedText>
-        </Pressable>
+        {onOpenDetail ? (
+          <Pressable
+            onPress={onOpenDetail}
+            style={({ pressed }) => [
+              styles.secondaryActionButton,
+              { borderColor: theme.primary },
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText type="smallBold" style={{ color: theme.primary }}>
+              詳細
+            </ThemedText>
+          </Pressable>
+        ) : null}
       </View>
     </ThemedView>
   );
@@ -382,10 +384,10 @@ export function AdminRoomManagementItem({
         <AdminMeta label="未確認" value={`${pendingCount}件`} />
         <AdminMeta label="差し戻し" value={`${rejectedCount}件`} />
         <AdminMeta
-          label="参加者"
+          label="メンバー"
           value={`${dashboard.members.length}名（参加中${joinedCount}名）`}
         />
-        <AdminMeta label="admin" value={`${adminCount}名`} />
+        <AdminMeta label="管理権限" value={`${adminCount}名`} />
       </View>
 
       <View style={styles.actions}>
@@ -412,7 +414,7 @@ export function AdminRoomManagementItem({
           ]}
         >
           <ThemedText type="smallBold" style={{ color: theme.primary }}>
-            参加者管理
+            メンバー
           </ThemedText>
         </Pressable>
         <Pressable
