@@ -1,5 +1,5 @@
-import { SymbolView } from 'expo-symbols';
 import { useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -69,8 +69,11 @@ export default function RoomsScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
@@ -121,6 +124,17 @@ export default function RoomsScreen() {
                     {rooms.length}件
                   </ThemedText>
                 </View>
+                <Pressable
+                  onPress={() => router.push('/rooms/new')}
+                  style={({ pressed }) => [
+                    styles.smallCreateButton,
+                    { backgroundColor: theme.primary },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText type="smallBold">＋ 作成</ThemedText>
+                </Pressable>
+
                 <View style={styles.roomList}>
                   {rooms.map((room) => (
                     <RoomCard key={room.id} room={room} />
@@ -130,35 +144,8 @@ export default function RoomsScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <ThemedView
-          type="backgroundElement"
-          style={[styles.createFooter, { borderTopColor: theme.border }]}
-        >
-          <View style={styles.createFooterInner}>
-            <Pressable
-              onPress={() => router.push('/rooms/new')}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: theme.primary },
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.buttonContent}>
-                <SymbolView
-                  name={{ ios: 'plus', android: 'add', web: 'add' }}
-                  size={18}
-                  tintColor="#ffffff"
-                  fallback={<Text style={styles.buttonIconFallback}>+</Text>}
-                />
-                <ThemedText type="default" style={styles.primaryButtonText}>
-                  新しくRoomを作成
-                </ThemedText>
-              </View>
-            </Pressable>
-          </View>
-        </ThemedView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -287,7 +274,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
@@ -374,39 +364,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.one,
   },
-  primaryButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-  },
-  primaryButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  buttonIconFallback: {
-    color: '#ffffff',
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  createFooter: {
-    width: '100%',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  createFooterInner: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-  },
   openHint: {
     alignItems: 'flex-end',
   },
@@ -429,5 +386,12 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.98 }],
+  },
+  smallCreateButton: {
+    minHeight: 32,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

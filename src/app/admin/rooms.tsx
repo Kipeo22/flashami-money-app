@@ -77,8 +77,11 @@ export default function AdminRoomsScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <AdminBackLink onPress={() => router.replace('/admin')} />
 
@@ -126,8 +129,8 @@ export default function AdminRoomsScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -138,7 +141,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

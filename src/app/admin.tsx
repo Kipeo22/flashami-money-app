@@ -88,8 +88,11 @@ export default function AdminScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
@@ -186,8 +189,8 @@ export default function AdminScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -198,7 +201,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,
