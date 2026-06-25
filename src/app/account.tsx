@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SymbolView } from 'expo-symbols';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -9,49 +10,61 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { useAppPreferences, type AppMode } from '@/lib/app-preferences';
 import { signOut } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 
-export default function SettingsScreen() {
+const AVATAR_COLOR_STORAGE_KEY = 'flashami-money-app:avatar-color';
+const avatarColors = ['#007aff', '#34c759', '#ff9500', '#af52de', '#ff2d55'];
+
+export default function AccountScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { appMode, setAppMode } = useAppPreferences();
+  const [avatarColor, setAvatarColor] = useState(avatarColors[0]);
   const [email, setEmail] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [isSavingMode, setIsSavingMode] = useState(false);
 
   useEffect(() => {
     let active = true;
 
-    async function loadUser() {
+    async function loadAccount() {
       if (!isSupabaseConfigured) {
         router.replace('/login');
         return;
       }
 
-      const supabase = getSupabaseClient();
-      const { data } = await supabase.auth.getUser();
+      const [storedAvatarColor, userResult] = await Promise.all([
+        AsyncStorage.getItem(AVATAR_COLOR_STORAGE_KEY),
+        getSupabaseClient().auth.getUser(),
+      ]);
 
       if (!active) {
         return;
       }
 
-      if (!data.user) {
+      if (storedAvatarColor && avatarColors.includes(storedAvatarColor)) {
+        setAvatarColor(storedAvatarColor);
+      }
+
+      if (!userResult.data.user) {
         router.replace('/login');
         return;
       }
 
-      setEmail(data.user.email ?? null);
+      setEmail(userResult.data.user.email ?? null);
     }
 
-    loadUser();
+    loadAccount();
 
     return () => {
       active = false;
     };
   }, [router]);
+
+  const handleAvatarColorChange = async (color: string) => {
+    setAvatarColor(color);
+    await AsyncStorage.setItem(AVATAR_COLOR_STORAGE_KEY, color);
+  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -69,19 +82,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleAppModeChange = async (mode: AppMode) => {
-    setIsSavingMode(true);
-    setFeedback(null);
-
-    try {
-      await setAppMode(mode);
-    } catch {
-      setFeedback('表示モードを保存できませんでした。');
-    } finally {
-      setIsSavingMode(false);
-    }
-  };
-
   return (
     <ThemedView style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -89,10 +89,10 @@ export default function SettingsScreen() {
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
-                設定
+                アカウント
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                アカウント情報とアプリ操作を管理します。
+                プロフィールとログアウトを管理します。
               </ThemedText>
             </ThemedView>
 
@@ -102,25 +102,11 @@ export default function SettingsScreen() {
             >
               <View style={styles.accountRow}>
                 <View
-                  style={[
-                    styles.accountIcon,
-                    { backgroundColor: theme.primarySoft },
-                  ]}
+                  style={[styles.accountIcon, { backgroundColor: avatarColor }]}
                 >
-                  <SymbolView
-                    name={{
-                      ios: 'person.fill',
-                      android: 'person',
-                      web: 'person',
-                    }}
-                    size={20}
-                    tintColor={theme.primary}
-                    fallback={
-                      <Text style={{ color: theme.primary, fontWeight: '700' }}>
-                        A
-                      </Text>
-                    }
-                  />
+                  <ThemedText type="smallBold" style={styles.avatarText}>
+                    {getAccountInitial(email)}
+                  </ThemedText>
                 </View>
                 <View style={styles.accountText}>
                   <ThemedText type="small" themeColor="textSecondary">
@@ -138,29 +124,49 @@ export default function SettingsScreen() {
               style={[styles.card, { borderColor: theme.border }, Shadows.card]}
             >
               <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">表示モード</ThemedText>
+                <ThemedText type="smallBold">アイコン</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {isSavingMode ? '保存中' : '端末ごとに保存'}
+                  {getAccountInitial(email)}
                 </ThemedText>
               </View>
+              <View style={styles.iconPreviewRow}>
+                <View
+                  style={[
+                    styles.largeAccountIcon,
+                    { backgroundColor: avatarColor },
+                  ]}
+                >
+                  <ThemedText type="title" style={styles.avatarText}>
+                    {getAccountInitial(email)}
+                  </ThemedText>
+                </View>
+                <View style={styles.accountText}>
+                  <ThemedText type="smallBold">カラー</ThemedText>
+                  <View style={styles.colorRow}>
+                    {avatarColors.map((color) => {
+                      const isSelected = color === avatarColor;
 
-              <ThemedText type="small" themeColor="textSecondary">
-                参加者モードでは支出入力を優先し、Room一覧や承認画面を下部メニューに表示しません。
-              </ThemedText>
-
-              <View style={styles.modeOptions}>
-                <ModeOption
-                  description="開催中イベントの支出登録を最優先します。"
-                  isSelected={appMode === 'participant'}
-                  label="参加者"
-                  onPress={() => handleAppModeChange('participant')}
-                />
-                <ModeOption
-                  description="Room管理、承認、支出確認を表示します。"
-                  isSelected={appMode === 'admin'}
-                  label="管理者"
-                  onPress={() => handleAppModeChange('admin')}
-                />
+                      return (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isSelected }}
+                          key={color}
+                          onPress={() => handleAvatarColorChange(color)}
+                          style={({ pressed }) => [
+                            styles.colorSwatch,
+                            {
+                              backgroundColor: color,
+                              borderColor: isSelected
+                                ? theme.text
+                                : theme.backgroundElement,
+                            },
+                            pressed && styles.pressed,
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
             </ThemedView>
 
@@ -226,58 +232,8 @@ export default function SettingsScreen() {
   );
 }
 
-function ModeOption({
-  description,
-  isSelected,
-  label,
-  onPress,
-}: {
-  description: string;
-  isSelected: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: isSelected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.modeOption,
-        {
-          backgroundColor: isSelected ? theme.primarySoft : theme.background,
-          borderColor: isSelected ? theme.primary : theme.border,
-        },
-        pressed && styles.pressed,
-      ]}
-    >
-      <View
-        style={[
-          styles.radio,
-          {
-            borderColor: isSelected ? theme.primary : theme.textDisabled,
-          },
-        ]}
-      >
-        {isSelected ? (
-          <View style={[styles.radioDot, { backgroundColor: theme.primary }]} />
-        ) : null}
-      </View>
-      <View style={styles.modeOptionText}>
-        <ThemedText
-          type="smallBold"
-          style={{ color: isSelected ? theme.primary : theme.text }}
-        >
-          {label}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          {description}
-        </ThemedText>
-      </View>
-    </Pressable>
-  );
+function getAccountInitial(email: string | null) {
+  return email?.trim().slice(0, 1).toUpperCase() || 'A';
 }
 
 const styles = StyleSheet.create({
@@ -325,47 +281,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 20,
   },
+  avatarText: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
   accountText: {
     minWidth: 0,
     flex: 1,
     gap: Spacing.one,
+  },
+  iconPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  largeAccountIcon: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  colorSwatch: {
+    width: 34,
+    height: 34,
+    borderWidth: 3,
+    borderRadius: 17,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
-  },
-  modeOptions: {
-    gap: Spacing.two,
-  },
-  modeOption: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  modeOptionText: {
-    minWidth: 0,
-    flex: 1,
-    gap: Spacing.one,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderRadius: 11,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
   },
   logoutRow: {
     minHeight: 52,
