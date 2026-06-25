@@ -216,7 +216,7 @@ export default function ExpenseDetailScreen() {
                     <View style={styles.sectionHeader}>
                       <ThemedText type="smallBold">承認・差し戻し</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
-                        admin
+                        管理権限あり
                       </ThemedText>
                     </View>
 

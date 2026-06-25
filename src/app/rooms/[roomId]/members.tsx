@@ -35,7 +35,7 @@ export default function RoomMembersScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError('参加者一覧を表示できませんでした。');
+        setError('メンバー一覧を表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -85,9 +85,9 @@ export default function RoomMembersScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">参加者一覧</ThemedText>
+              <ThemedText type="subtitle">メンバー</ThemedText>
               <ThemedText themeColor="textSecondary">
-                roomに登録された参加者のメールアドレス、ロール、ステータスを表示します。
+                roomに登録されたメンバーのメールアドレス、権限、参加状態を表示します。
               </ThemedText>
             </ThemedView>
 
@@ -166,7 +166,7 @@ export default function RoomMembersScreen() {
               >
                 <ThemedText type="smallBold">読み込み中</ThemedText>
                 <ThemedText type="small" themeColor="textSecondary">
-                  roomの詳細と参加者を取得しています。
+                  roomの詳細とメンバーを取得しています。
                 </ThemedText>
               </ThemedView>
             ) : null}
@@ -205,7 +205,7 @@ export default function RoomMembersScreen() {
                 style={[styles.card, { borderColor: theme.border }]}
               >
                 <View style={styles.sectionHeader}>
-                  <ThemedText type="smallBold">参加者</ThemedText>
+                  <ThemedText type="smallBold">メンバー</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {members.length}名
                   </ThemedText>
@@ -213,7 +213,7 @@ export default function RoomMembersScreen() {
 
                 {members.length === 0 ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    参加者はまだ登録されていません。
+                    メンバーはまだ登録されていません。
                   </ThemedText>
                 ) : (
                   <View style={styles.memberList}>
@@ -238,13 +238,21 @@ export default function RoomMembersScreen() {
                         </View>
                         <View style={styles.badges}>
                           <Badge
-                            backgroundColor={theme.backgroundSelected}
-                            label={member.role}
-                            textColor={theme.textSecondary}
+                            backgroundColor={
+                              member.role === 'admin'
+                                ? theme.primarySoft
+                                : theme.backgroundSelected
+                            }
+                            label={formatMemberRole(member.role)}
+                            textColor={
+                              member.role === 'admin'
+                                ? theme.primary
+                                : theme.textSecondary
+                            }
                           />
                           <Badge
                             backgroundColor={theme.backgroundSelected}
-                            label={member.status}
+                            label={formatMemberStatus(member.status)}
                             textColor={theme.textSecondary}
                           />
                         </View>
@@ -260,6 +268,14 @@ export default function RoomMembersScreen() {
       </SafeAreaView>
     </ThemedView>
   );
+}
+
+function formatMemberRole(role: RoomMemberRecord['role']) {
+  return role === 'admin' ? '管理権限' : 'メンバー';
+}
+
+function formatMemberStatus(status: RoomMemberRecord['status']) {
+  return status === 'joined' ? '参加中' : '招待中';
 }
 
 function Meta({ label, value }: { label: string; value: string }) {
@@ -385,6 +401,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   badgeText: {
-    textTransform: 'capitalize',
+    fontWeight: '700',
   },
 });

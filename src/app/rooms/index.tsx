@@ -74,10 +74,10 @@ export default function RoomsScreen() {
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
-                参加済みroom
+                イベント
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                参加しているイベントや旅行の支出を確認できます。
+                参加したイベントの支出、精算、メンバーを確認できます。
               </ThemedText>
             </ThemedView>
 
@@ -101,14 +101,14 @@ export default function RoomsScreen() {
                 ]}
               >
                 <ThemedText type="default" style={styles.emptyTitle}>
-                  参加中のRoomがありません
+                  参加中のイベントがありません
                 </ThemedText>
                 <ThemedText
                   type="small"
                   themeColor="textSecondary"
                   style={styles.emptyDescription}
                 >
-                  新しくイベントや旅行のRoomを作成して、メンバーと支出を記録しましょう。
+                  新しくイベントを作成して、メンバーと支出を記録しましょう。
                 </ThemedText>
               </ThemedView>
             ) : null}
@@ -116,7 +116,7 @@ export default function RoomsScreen() {
             {!isLoading && rooms.length > 0 ? (
               <>
                 <View style={styles.listHeader}>
-                  <ThemedText type="smallBold">Room一覧</ThemedText>
+                  <ThemedText type="smallBold">イベント一覧</ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {rooms.length}件
                   </ThemedText>
@@ -151,7 +151,7 @@ export default function RoomsScreen() {
                   fallback={<Text style={styles.buttonIconFallback}>+</Text>}
                 />
                 <ThemedText type="default" style={styles.primaryButtonText}>
-                  新しくRoomを作成
+                  新しくイベントを作成
                 </ThemedText>
               </View>
             </Pressable>
@@ -207,7 +207,7 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
               {room.name}
             </ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Room詳細と支出一覧を開く
+              支出と精算を開く
             </ThemedText>
           </View>
         </View>
@@ -227,15 +227,42 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
         {room.description || '説明はまだ登録されていません。'}
       </ThemedText>
 
+      {room.member_role === 'admin' ? (
+        <View
+          style={[styles.roleBadge, { backgroundColor: theme.primarySoft }]}
+        >
+          <SymbolView
+            name={{
+              ios: 'checkmark.shield.fill',
+              android: 'verified_user',
+              web: 'verified_user',
+            }}
+            size={16}
+            tintColor={theme.primary}
+            fallback={<Text style={{ color: theme.primary }}>✓</Text>}
+          />
+          <ThemedText type="smallBold" style={{ color: theme.primary }}>
+            管理権限あり
+          </ThemedText>
+        </View>
+      ) : null}
+
       <View style={[styles.metaRow, { backgroundColor: theme.overBackground }]}>
         <Meta label="期間" value={formatRoomPeriod(room)} />
-        <Meta label="支出" value={`${room.expense_count}件`} />
-        <Meta label="状態" value={formatMemberStatus(room)} />
+        <Meta
+          label="支出合計"
+          value={formatCurrency(room.expense_total_amount)}
+        />
+        <Meta
+          label="承認済み"
+          value={formatCurrency(room.approved_expense_total_amount)}
+        />
+        <Meta label="参加状態" value={formatMemberStatus(room)} />
       </View>
 
       <View style={styles.openHint}>
         <ThemedText type="smallBold" style={{ color: theme.primary }}>
-          Roomを開く
+          イベントを開く
         </ThemedText>
       </View>
     </Pressable>
@@ -275,6 +302,10 @@ function formatRoomPeriod(room: UserRoomRecord) {
   }
 
   return `${room.start_date ?? '-'} - ${room.end_date ?? '-'}`;
+}
+
+function formatCurrency(value: number) {
+  return `${value.toLocaleString('ja-JP')}円`;
 }
 
 function formatMemberStatus(room: UserRoomRecord) {
@@ -409,6 +440,15 @@ const styles = StyleSheet.create({
   },
   openHint: {
     alignItems: 'flex-end',
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
   },
   emptyCard: {
     padding: Spacing.five,
