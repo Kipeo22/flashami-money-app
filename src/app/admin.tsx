@@ -38,7 +38,7 @@ export default function AdminScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError('管理画面を表示できませんでした。');
+        setError('やることを表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -59,7 +59,7 @@ export default function AdminScreen() {
         const message =
           caughtError instanceof Error
             ? caughtError.message
-            : '管理画面の取得に失敗しました。';
+            : 'やることの取得に失敗しました。';
 
         if (message.includes('ログインが必要')) {
           router.replace('/login');
@@ -93,16 +93,16 @@ export default function AdminScreen() {
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
-                管理
+                やること
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                作成・管理しているRoomの状況を確認し、必要な詳細へ移動します。
+                管理権限があるRoomの確認待ち、支出、メンバーをまとめて確認します。
               </ThemedText>
             </ThemedView>
 
             {isLoading ? (
               <AdminInfoCard title="読み込み中">
-                管理対象のRoomと支出を取得しています。
+                確認が必要なRoomと支出を取得しています。
               </AdminInfoCard>
             ) : null}
 
@@ -114,8 +114,8 @@ export default function AdminScreen() {
               <>
                 <View style={styles.summaryGrid}>
                   <AdminSummaryActionTile
-                    description="Room別の参加者数、支出状況、管理導線を開く"
-                    label="管理Room"
+                    description="Room別の参加者数、支出状況、必要な操作を開く"
+                    label="Room別"
                     onPress={() => router.push('/admin/rooms' as never)}
                     symbol={{
                       ios: 'person.3.fill',
@@ -126,7 +126,7 @@ export default function AdminScreen() {
                   />
                   <AdminSummaryActionTile
                     description="承認・差し戻しが必要な支出を確認する"
-                    label="未確認"
+                    label="承認待ち"
                     onPress={() => router.push('/admin/reviews' as never)}
                     symbol={{
                       ios: 'checklist',
@@ -171,14 +171,14 @@ export default function AdminScreen() {
                     ]}
                   >
                     <ThemedText type="default" style={styles.emptyTitle}>
-                      管理できるRoomがありません
+                      確認が必要なRoomはありません
                     </ThemedText>
                     <ThemedText
                       type="small"
                       themeColor="textSecondary"
                       style={styles.emptyDescription}
                     >
-                      Room作成者またはadminとして登録されると、この画面に表示されます。
+                      Room作成者または管理権限があるメンバーになると、この画面に表示されます。
                     </ThemedText>
                   </ThemedView>
                 ) : null}

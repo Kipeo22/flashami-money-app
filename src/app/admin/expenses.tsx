@@ -117,7 +117,7 @@ export default function AdminExpensesScreen() {
             <ThemedView style={styles.header}>
               <ThemedText type="subtitle">{title}</ThemedText>
               <ThemedText themeColor="textSecondary">
-                管理Roomに登録された支出の内訳と詳細を確認します。
+                管理権限があるRoomの支出内訳と詳細を確認します。
               </ThemedText>
             </ThemedView>
 
