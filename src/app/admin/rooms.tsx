@@ -32,7 +32,7 @@ export default function AdminRoomsScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError('管理Roomを表示できませんでした。');
+        setError('Room別タスクを表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -53,7 +53,7 @@ export default function AdminRoomsScreen() {
         const message =
           caughtError instanceof Error
             ? caughtError.message
-            : '管理Roomの取得に失敗しました。';
+            : 'Room別タスクの取得に失敗しました。';
 
         if (message.includes('ログインが必要')) {
           router.replace('/login');
@@ -77,21 +77,24 @@ export default function AdminRoomsScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <AdminBackLink onPress={() => router.replace('/admin')} />
 
             <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">管理Room</ThemedText>
+              <ThemedText type="subtitle">Room別タスク</ThemedText>
               <ThemedText themeColor="textSecondary">
-                Room別に参加者数、支出状況、管理導線を確認します。
+                管理権限があるRoomごとに、メンバー、支出状況、必要な操作を確認します。
               </ThemedText>
             </ThemedView>
 
             {isLoading ? (
               <AdminInfoCard title="読み込み中">
-                管理対象のRoomを取得しています。
+                確認できるRoomを取得しています。
               </AdminInfoCard>
             ) : null}
 
@@ -109,8 +112,8 @@ export default function AdminRoomsScreen() {
                 </View>
 
                 {adminRooms.length === 0 ? (
-                  <AdminInfoCard title="管理できるRoomがありません">
-                    Room作成者またはadminとして登録されると表示されます。
+                  <AdminInfoCard title="表示できるRoomがありません">
+                    Room作成者または管理権限があるメンバーになると表示されます。
                   </AdminInfoCard>
                 ) : (
                   <View style={styles.list}>
@@ -126,8 +129,8 @@ export default function AdminRoomsScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -138,7 +141,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

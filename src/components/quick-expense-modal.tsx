@@ -41,9 +41,11 @@ const noReceiptReasons = [
 ];
 
 export function QuickExpenseModal({
+  initialRoomId,
   onClose,
   visible,
 }: {
+  initialRoomId?: string | null;
   onClose: () => void;
   visible: boolean;
 }) {
@@ -79,9 +81,13 @@ export function QuickExpenseModal({
 
       try {
         const rooms = await fetchCurrentUserRooms();
-        const room = rooms.find((candidate) =>
+        const activeRooms = rooms.filter((candidate) =>
           isRoomActive(candidate, getTodayIsoDate()),
         );
+        const room =
+          activeRooms.find((candidate) => candidate.id === initialRoomId) ??
+          activeRooms[0] ??
+          null;
 
         if (!active) {
           return;
@@ -111,7 +117,7 @@ export function QuickExpenseModal({
     return () => {
       active = false;
     };
-  }, [visible]);
+  }, [initialRoomId, visible]);
 
   const resetForm = () => {
     setAmountText('');

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function AdminReviewsScreen() {
   const router = useRouter();
+  const { roomId } = useLocalSearchParams<{ roomId?: string }>();
+  const resolvedRoomId = Array.isArray(roomId) ? undefined : roomId;
   const [adminRooms, setAdminRooms] = useState<AdminRoomDashboard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingExpenseId, setIsUpdatingExpenseId] = useState<string | null>(
@@ -45,7 +47,7 @@ export default function AdminReviewsScreen() {
       }
 
       if (!isSupabaseConfigured) {
-        setError('未確認支出を表示できませんでした。');
+        setError('承認待ちを表示できませんでした。');
         setIsLoading(false);
         return;
       }
@@ -67,7 +69,7 @@ export default function AdminReviewsScreen() {
         const message =
           caughtError instanceof Error
             ? caughtError.message
-            : '未確認支出の取得に失敗しました。';
+            : '承認待ちの取得に失敗しました。';
 
         if (message.includes('ログインが必要')) {
           router.replace('/login');
@@ -90,8 +92,19 @@ export default function AdminReviewsScreen() {
   }, [router]);
 
   const pendingReviews = useMemo(
-    () => flattenAdminExpenses(adminRooms, 'pending'),
-    [adminRooms],
+    () =>
+      flattenAdminExpenses(adminRooms, 'pending').filter((item) =>
+        resolvedRoomId ? item.room.id === resolvedRoomId : true,
+      ),
+    [adminRooms, resolvedRoomId],
+  );
+  const currentRoom = useMemo(
+    () =>
+      resolvedRoomId
+        ? (adminRooms.find((dashboard) => dashboard.room.id === resolvedRoomId)
+            ?.room ?? null)
+        : null,
+    [adminRooms, resolvedRoomId],
   );
 
   const handleApprove = async (item: AdminExpenseItem) => {
@@ -179,15 +192,22 @@ export default function AdminReviewsScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <AdminBackLink onPress={() => router.replace('/admin')} />
 
             <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">未確認支出</ThemedText>
+              <ThemedText type="subtitle">
+                {currentRoom ? `${currentRoom.name}の承認待ち` : '承認待ち'}
+              </ThemedText>
               <ThemedText themeColor="textSecondary">
-                管理Roomに登録された支出を承認または差し戻します。
+                {currentRoom
+                  ? 'このRoomの支出を承認または差し戻します。'
+                  : '管理権限があるRoomの支出を承認または差し戻します。'}
               </ThemedText>
             </ThemedView>
 
@@ -249,8 +269,8 @@ export default function AdminReviewsScreen() {
             ) : null}
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -261,7 +281,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

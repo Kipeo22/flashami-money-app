@@ -12,11 +12,8 @@ import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useAppPreferences } from '@/lib/app-preferences';
 
 export default function AppTabs() {
-  const { appMode } = useAppPreferences();
-
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -25,18 +22,14 @@ export default function AppTabs() {
           <TabTrigger name="home" href="/" asChild>
             <TabButton>ホーム</TabButton>
           </TabTrigger>
-          {appMode === 'admin' ? (
-            <>
-              <TabTrigger name="rooms" href="/rooms" asChild>
-                <TabButton>Room</TabButton>
-              </TabTrigger>
-              <TabTrigger name="admin" href="/admin" asChild>
-                <TabButton>管理</TabButton>
-              </TabTrigger>
-            </>
-          ) : null}
-          <TabTrigger name="settings" href="/settings" asChild>
-            <TabButton>設定</TabButton>
+          <TabTrigger name="rooms" href="/rooms" asChild>
+            <TabButton>イベント</TabButton>
+          </TabTrigger>
+          <TabTrigger name="notifications" href="/notifications" asChild>
+            <TabButton>通知</TabButton>
+          </TabTrigger>
+          <TabTrigger name="account" href="/account" asChild>
+            <TabButton>アカウント</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

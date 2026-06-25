@@ -146,8 +146,11 @@ export default function ExpenseDetailScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="subtitle">支出詳細</ThemedText>
@@ -216,7 +219,7 @@ export default function ExpenseDetailScreen() {
                     <View style={styles.sectionHeader}>
                       <ThemedText type="smallBold">承認・差し戻し</ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
-                        admin
+                        管理権限あり
                       </ThemedText>
                     </View>
 
@@ -437,8 +440,8 @@ export default function ExpenseDetailScreen() {
             </View>
           </ThemedView>
         </ScrollView>
-        <BottomNav />
       </SafeAreaView>
+      <BottomNav />
     </ThemedView>
   );
 }
@@ -499,7 +502,10 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
   },
   scrollContent: {
     flexGrow: 1,

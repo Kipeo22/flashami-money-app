@@ -22,9 +22,13 @@ export type RoomMemberRecord = {
 };
 
 export type UserRoomRecord = RoomRecord & {
+  approved_expense_total_amount: number;
   expense_count: number;
+  expense_total_amount: number;
   member_role: RoomMemberRole;
   member_status: RoomMemberStatus;
+  pending_expense_count: number;
+  rejected_expense_count: number;
 };
 
 type CreateRoomInput = {
@@ -247,7 +251,9 @@ export async function requireCurrentUserRoomAdmin(roomId: string) {
   const membership = await ensureCurrentUserRoomMembership(roomId);
 
   if (membership.role !== 'admin') {
-    throw new Error('支出ステータスを変更できるのはadminのみです。');
+    throw new Error(
+      '支出ステータスを変更できるのは管理権限があるメンバーのみです。',
+    );
   }
 
   return membership;
@@ -302,20 +308,57 @@ export async function fetchCurrentUserRooms() {
 
   const { data: expenses, error: expensesError } = await supabase
     .from('expenses')
-    .select('room_id')
+    .select('room_id, amount, status')
     .in('room_id', roomIds)
-    .returns<{ room_id: string }[]>();
+    .returns<
+      {
+        amount: number;
+        room_id: string;
+        status: 'approved' | 'pending' | 'rejected' | 'settled';
+      }[]
+    >();
 
   if (expensesError) {
     throw new Error(formatSupabaseError(expensesError));
   }
 
   const expenseCountByRoomId = new Map<string, number>();
+  const expenseTotalByRoomId = new Map<string, number>();
+  const approvedExpenseTotalByRoomId = new Map<string, number>();
+  const pendingExpenseCountByRoomId = new Map<string, number>();
+  const rejectedExpenseCountByRoomId = new Map<string, number>();
+
   for (const expense of expenses) {
     expenseCountByRoomId.set(
       expense.room_id,
       (expenseCountByRoomId.get(expense.room_id) ?? 0) + 1,
     );
+    expenseTotalByRoomId.set(
+      expense.room_id,
+      (expenseTotalByRoomId.get(expense.room_id) ?? 0) + expense.amount,
+    );
+
+    if (expense.status === 'approved' || expense.status === 'settled') {
+      approvedExpenseTotalByRoomId.set(
+        expense.room_id,
+        (approvedExpenseTotalByRoomId.get(expense.room_id) ?? 0) +
+          expense.amount,
+      );
+    }
+
+    if (expense.status === 'pending') {
+      pendingExpenseCountByRoomId.set(
+        expense.room_id,
+        (pendingExpenseCountByRoomId.get(expense.room_id) ?? 0) + 1,
+      );
+    }
+
+    if (expense.status === 'rejected') {
+      rejectedExpenseCountByRoomId.set(
+        expense.room_id,
+        (rejectedExpenseCountByRoomId.get(expense.room_id) ?? 0) + 1,
+      );
+    }
   }
 
   return rooms
@@ -324,9 +367,14 @@ export async function fetchCurrentUserRooms() {
 
       return {
         ...room,
+        approved_expense_total_amount:
+          approvedExpenseTotalByRoomId.get(room.id) ?? 0,
         expense_count: expenseCountByRoomId.get(room.id) ?? 0,
+        expense_total_amount: expenseTotalByRoomId.get(room.id) ?? 0,
         member_role: membership?.role ?? 'member',
         member_status: membership?.status ?? 'invited',
+        pending_expense_count: pendingExpenseCountByRoomId.get(room.id) ?? 0,
+        rejected_expense_count: rejectedExpenseCountByRoomId.get(room.id) ?? 0,
       } satisfies UserRoomRecord;
     })
     .sort((firstRoom, secondRoom) =>
