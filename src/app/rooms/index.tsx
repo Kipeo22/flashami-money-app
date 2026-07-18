@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -60,6 +60,10 @@ export default function RoomsScreen() {
         )
       : rooms;
   }, [query, rooms]);
+  const roomGroups = useMemo(
+    () => groupRoomsByPeriod(visibleRooms),
+    [visibleRooms],
+  );
 
   return (
     <ThemedView type="backgroundElement" style={styles.screen}>
@@ -93,7 +97,7 @@ export default function RoomsScreen() {
         >
           <View style={styles.container}>
             <ThemedText type="title" style={styles.title}>
-              参加中のroom
+              Rooms
             </ThemedText>
 
             {searchOpen ? (
@@ -155,11 +159,66 @@ export default function RoomsScreen() {
               </SurfaceCard>
             ) : null}
 
-            <View style={styles.roomList}>
-              {visibleRooms.map((room) => (
-                <RoomCard key={room.id} room={room} />
-              ))}
-            </View>
+            {!loading && !error && visibleRooms.length > 0 ? (
+              <View style={styles.roomSections}>
+                {roomGroups.active.length > 0 ? (
+                  <RoomSection title="開催中" count={roomGroups.active.length}>
+                    <View style={styles.activeRoomList}>
+                      {roomGroups.active.map((room) => (
+                        <ActiveRoomCard key={room.id} room={room} />
+                      ))}
+                    </View>
+                  </RoomSection>
+                ) : !query ? (
+                  <View
+                    style={[
+                      styles.noActiveRoom,
+                      {
+                        backgroundColor: theme.overBackground,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{
+                        ios: 'calendar.badge.clock',
+                        android: 'event_busy',
+                        web: 'event_busy',
+                      }}
+                      size={20}
+                      tintColor={theme.textSecondary}
+                      fallback={
+                        <Text style={{ color: theme.textSecondary }}>□</Text>
+                      }
+                    />
+                    <View style={styles.noActiveText}>
+                      <ThemedText type="smallBold">
+                        現在開催中のroomはありません
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        開催予定と過去のroomは下から確認できます
+                      </ThemedText>
+                    </View>
+                  </View>
+                ) : null}
+
+                <CompactRoomSection
+                  rooms={roomGroups.upcoming}
+                  title="開催予定"
+                  tone="upcoming"
+                />
+                <CompactRoomSection
+                  rooms={roomGroups.past}
+                  title="過去のroom"
+                  tone="past"
+                />
+                <CompactRoomSection
+                  rooms={roomGroups.undated}
+                  title="日程未設定"
+                  tone="undated"
+                />
+              </View>
+            ) : null}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -168,26 +227,57 @@ export default function RoomsScreen() {
   );
 }
 
-function RoomCard({ room }: { room: UserRoomRecord }) {
+function RoomSection({
+  children,
+  count,
+  title,
+}: {
+  children: ReactNode;
+  count: number;
+  title: string;
+}) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.activeDot} />
+          <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+        </View>
+        <ThemedText type="small" themeColor="textSecondary">
+          {count}件
+        </ThemedText>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function ActiveRoomCard({ room }: { room: UserRoomRecord }) {
   const router = useRouter();
   const theme = useTheme();
+
   return (
-    <Pressable onPress={() => router.push(`/rooms/${room.id}` as never)}>
-      {({ pressed }) => (
-        <SurfaceCard style={[styles.roomCard, pressed && styles.pressed]}>
-          <View style={styles.cardHeader}>
-            <ThemedText
-              type="default"
-              style={styles.roomName}
-              numberOfLines={1}
-            >
-              {room.name}
-            </ThemedText>
-            <Badge
-              label={room.member_role === 'admin' ? '運営者' : '参加者'}
-              tone={room.member_role === 'admin' ? 'primary' : 'neutral'}
-            />
-          </View>
+    <Pressable
+      accessibilityHint="room詳細を開きます"
+      accessibilityLabel={`開催中のroom、${room.name}`}
+      accessibilityRole="button"
+      onPress={() => router.push(`/rooms/${room.id}` as never)}
+    >
+      <SurfaceCard
+        style={[styles.activeRoomCard, { borderColor: theme.primary }]}
+      >
+        <View style={styles.activeCardBadges}>
+          <Badge label="開催中" tone="success" />
+          <Badge
+            label={room.member_role === 'admin' ? '運営者' : '参加者'}
+            tone={room.member_role === 'admin' ? 'primary' : 'neutral'}
+          />
+        </View>
+
+        <View style={styles.activeRoomHeading}>
+          <ThemedText numberOfLines={2} style={styles.activeRoomName}>
+            {room.name}
+          </ThemedText>
           <View style={styles.dateRow}>
             <SymbolView
               name={{
@@ -203,40 +293,267 @@ function RoomCard({ room }: { room: UserRoomRecord }) {
               {formatPeriod(room)}
             </ThemedText>
           </View>
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <View style={styles.cardFooter}>
-            <View style={styles.stats}>
-              <Stat label="支出" value={`${room.expense_count}件`} />
-              <Stat
-                danger={room.pending_expense_count > 0}
-                label="未確認"
-                value={`${room.pending_expense_count}件`}
-              />
-            </View>
-            <View style={styles.people}>
-              {[0, 1, 2].map((index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.person,
-                    {
-                      backgroundColor: ['#f3d9cc', '#dbe8f5', '#e6e1d7'][index],
-                      borderColor: theme.backgroundElement,
-                    },
-                    index > 0 && styles.personOverlap,
-                  ]}
-                >
-                  <ThemedText style={styles.personText}>
-                    {['山', '佐', '田'][index]}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
+        </View>
+
+        <View
+          style={[
+            styles.activeStats,
+            { backgroundColor: theme.overBackground },
+          ]}
+        >
+          <View style={styles.totalStat}>
+            <ThemedText type="small" themeColor="textSecondary">
+              合計支出
+            </ThemedText>
+            <ThemedText style={styles.totalAmount}>
+              {formatCurrency(room.expense_total_amount)}
+            </ThemedText>
           </View>
-        </SurfaceCard>
-      )}
+          <View
+            style={[
+              styles.activeStatDivider,
+              { backgroundColor: theme.border },
+            ]}
+          />
+          <Stat label="支出" value={`${room.expense_count}件`} />
+          <Stat
+            danger={room.pending_expense_count > 0}
+            label="未確認"
+            value={`${room.pending_expense_count}件`}
+          />
+        </View>
+
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <View style={styles.openRoomRow}>
+          <ThemedText type="smallBold" style={{ color: theme.primary }}>
+            roomを開く
+          </ThemedText>
+          <SymbolView
+            name={{
+              ios: 'chevron.right',
+              android: 'chevron_right',
+              web: 'chevron_right',
+            }}
+            size={15}
+            tintColor={theme.primary}
+            fallback={<Text style={{ color: theme.primary }}>›</Text>}
+          />
+        </View>
+      </SurfaceCard>
     </Pressable>
   );
+}
+
+function CompactRoomSection({
+  rooms,
+  title,
+  tone,
+}: {
+  rooms: UserRoomRecord[];
+  title: string;
+  tone: 'past' | 'undated' | 'upcoming';
+}) {
+  const theme = useTheme();
+
+  if (rooms.length === 0) {
+    return null;
+  }
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {rooms.length}件
+        </ThemedText>
+      </View>
+      <View
+        style={[
+          styles.compactList,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        {rooms.map((room, index) => (
+          <View key={room.id}>
+            {index > 0 ? (
+              <View
+                style={[
+                  styles.compactSeparator,
+                  { backgroundColor: theme.border },
+                ]}
+              />
+            ) : null}
+            <CompactRoomRow room={room} tone={tone} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function CompactRoomRow({
+  room,
+  tone,
+}: {
+  room: UserRoomRecord;
+  tone: 'past' | 'undated' | 'upcoming';
+}) {
+  const router = useRouter();
+  const theme = useTheme();
+  const isUpcoming = tone === 'upcoming';
+
+  return (
+    <Pressable
+      accessibilityHint="room詳細を開きます"
+      accessibilityLabel={`${room.name}、${formatPeriod(room)}`}
+      accessibilityRole="button"
+      onPress={() => router.push(`/rooms/${room.id}` as never)}
+      style={styles.compactRoomRow}
+    >
+      <View
+        style={[
+          styles.compactIcon,
+          {
+            backgroundColor: isUpcoming
+              ? theme.primarySoft
+              : theme.overBackground,
+          },
+        ]}
+      >
+        <SymbolView
+          name={{
+            ios: isUpcoming ? 'calendar.badge.clock' : 'calendar',
+            android: isUpcoming ? 'event_upcoming' : 'calendar_today',
+            web: isUpcoming ? 'event_upcoming' : 'calendar_today',
+          }}
+          size={19}
+          tintColor={isUpcoming ? theme.primary : theme.textSecondary}
+          fallback={
+            <Text
+              style={{
+                color: isUpcoming ? theme.primary : theme.textSecondary,
+              }}
+            >
+              □
+            </Text>
+          }
+        />
+      </View>
+
+      <View style={styles.compactRoomText}>
+        <ThemedText numberOfLines={1} style={styles.compactRoomName}>
+          {room.name}
+        </ThemedText>
+        <ThemedText numberOfLines={1} type="small" themeColor="textSecondary">
+          {formatPeriod(room)}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {room.member_role === 'admin' ? '運営者' : '参加者'}・支出
+          {room.expense_count}件
+        </ThemedText>
+      </View>
+
+      <View style={styles.compactRoomAction}>
+        {room.pending_expense_count > 0 ? (
+          <View
+            style={[styles.pendingDot, { backgroundColor: theme.danger }]}
+          />
+        ) : null}
+        <SymbolView
+          name={{
+            ios: 'chevron.right',
+            android: 'chevron_right',
+            web: 'chevron_right',
+          }}
+          size={15}
+          tintColor={theme.textDisabled}
+          fallback={<Text style={{ color: theme.textDisabled }}>›</Text>}
+        />
+      </View>
+    </Pressable>
+  );
+}
+
+function groupRoomsByPeriod(rooms: UserRoomRecord[]) {
+  const today = getLocalIsoDate();
+  const groups: Record<RoomPeriodState, UserRoomRecord[]> = {
+    active: [],
+    past: [],
+    undated: [],
+    upcoming: [],
+  };
+
+  for (const room of rooms) {
+    groups[getRoomPeriodState(room, today)].push(room);
+  }
+
+  groups.active.sort((first, second) =>
+    compareNullableDates(first.end_date, second.end_date),
+  );
+  groups.upcoming.sort((first, second) =>
+    compareNullableDates(first.start_date, second.start_date),
+  );
+  groups.past.sort((first, second) =>
+    compareNullableDates(second.end_date, first.end_date),
+  );
+  groups.undated.sort((first, second) =>
+    first.name.localeCompare(second.name, 'ja'),
+  );
+
+  return groups;
+}
+
+type RoomPeriodState = 'active' | 'past' | 'undated' | 'upcoming';
+
+function getRoomPeriodState(
+  room: UserRoomRecord,
+  today: string,
+): RoomPeriodState {
+  if (!room.start_date && !room.end_date) {
+    return 'undated';
+  }
+
+  if (room.start_date && room.start_date > today) {
+    return 'upcoming';
+  }
+
+  if (room.end_date && room.end_date < today) {
+    return 'past';
+  }
+
+  return 'active';
+}
+
+function getLocalIsoDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function compareNullableDates(first: string | null, second: string | null) {
+  if (first && second) {
+    return first.localeCompare(second);
+  }
+
+  if (first) {
+    return -1;
+  }
+
+  if (second) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function formatCurrency(value: number) {
+  return `¥${value.toLocaleString('ja-JP')}`;
 }
 
 function Stat({
@@ -283,6 +600,45 @@ function formatPeriod(room: UserRoomRecord) {
 }
 
 const styles = StyleSheet.create({
+  activeCardBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#20a550',
+  },
+  activeRoomCard: {
+    gap: Spacing.three,
+    borderWidth: 1.5,
+    padding: 20,
+  },
+  activeRoomHeading: {
+    gap: Spacing.two,
+  },
+  activeRoomList: {
+    gap: Spacing.three,
+  },
+  activeRoomName: {
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 30,
+  },
+  activeStatDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 42,
+  },
+  activeStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
   avatar: {
     width: 42,
     height: 42,
@@ -290,16 +646,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 21,
   },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
+  compactIcon: {
+    width: 44,
+    height: 44,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
   },
-  cardHeader: {
+  compactList: {
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.panel,
+  },
+  compactRoomAction: {
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  compactRoomName: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 21,
+  },
+  compactRoomRow: {
+    minHeight: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  compactRoomText: {
+    minWidth: 0,
+    flex: 1,
+    gap: 1,
+  },
+  compactSeparator: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 70,
   },
   container: { width: '100%', maxWidth: MaxContentWidth, gap: 18 },
   dangerText: { color: '#d9272e' },
@@ -309,28 +695,59 @@ const styles = StyleSheet.create({
   emptyText: { textAlign: 'center' },
   emptyTitle: { fontWeight: '700' },
   messageCard: { gap: 4 },
-  people: { flexDirection: 'row', paddingRight: 2 },
-  person: {
-    width: 28,
-    height: 28,
+  noActiveRoom: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    gap: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 14,
+    padding: 14,
   },
-  personOverlap: { marginLeft: -8 },
-  personText: { fontSize: 10, fontWeight: '700' },
-  pressed: { opacity: 0.64, transform: [{ scale: 0.99 }] },
-  roomCard: { gap: 12, padding: 18 },
-  roomList: { gap: Spacing.three },
-  roomName: { flex: 1, fontWeight: '700', fontSize: 18 },
+  noActiveText: {
+    minWidth: 0,
+    flex: 1,
+    gap: 1,
+  },
+  openRoomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+  },
+  pendingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  roomSections: {
+    gap: 28,
+  },
   safeArea: { flex: 1 },
   screen: { flex: 1 },
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.one,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 27,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingBottom: 28,
+    paddingBottom: 40,
   },
   search: {
     minHeight: 48,
@@ -342,8 +759,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, minHeight: 48, fontFamily: Fonts.sans, fontSize: 16 },
   statLabel: { fontSize: 12, lineHeight: 16 },
-  stats: { flexDirection: 'row', gap: 28 },
-  title: { marginTop: 6, marginBottom: 10, fontSize: 30, lineHeight: 38 },
+  title: { marginTop: 6, marginBottom: 4, fontSize: 30, lineHeight: 38 },
   topActions: { flexDirection: 'row', gap: 10 },
   topBar: {
     width: '100%',
@@ -354,5 +770,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 18,
     paddingVertical: 8,
+  },
+  totalAmount: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+  },
+  totalStat: {
+    minWidth: 0,
+    flex: 1,
+    gap: 1,
   },
 });
