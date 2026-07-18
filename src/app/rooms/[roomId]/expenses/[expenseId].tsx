@@ -1,19 +1,27 @@
-import { Link, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomNav } from '@/components/bottom-nav';
+import {
+  AppHeader,
+  Badge,
+  PrimaryButton,
+  RoundIcon,
+  SecondaryButton,
+  SurfaceCard,
+} from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   fetchExpenseById,
@@ -23,169 +31,152 @@ import {
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function ExpenseDetailScreen() {
-  const { expenseId, roomId } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     expenseId?: string;
     roomId?: string;
   }>();
+  const expenseId = Array.isArray(params.expenseId)
+    ? undefined
+    : params.expenseId;
+  const roomId = Array.isArray(params.roomId) ? undefined : params.roomId;
   const router = useRouter();
   const theme = useTheme();
-  const resolvedRoomId = Array.isArray(roomId) ? undefined : roomId;
-  const resolvedExpenseId = Array.isArray(expenseId) ? undefined : expenseId;
   const [expense, setExpense] = useState<ExpenseDetailRecord | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [loading, setLoading] = useState(
+    Boolean(roomId && expenseId && isSupabaseConfigured),
+  );
+  const [updating, setUpdating] = useState(false);
+  const [rejectionOpen, setRejectionOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [statusFeedback, setStatusFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(
+    roomId && expenseId ? null : '支出が指定されていません。',
+  );
 
   useEffect(() => {
     let active = true;
-
-    async function loadExpense() {
-      if (!resolvedRoomId || !resolvedExpenseId) {
-        setIsLoading(false);
-        return;
-      }
-
-      if (!isSupabaseConfigured) {
-        router.replace('/login');
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const expenseData = await fetchExpenseById(
-          resolvedRoomId,
-          resolvedExpenseId,
-        );
-
-        if (active) {
-          setExpense(expenseData);
-          setRejectionReason(expenseData.rejection_reason ?? '');
-          setFeedback(null);
-          setStatusFeedback(null);
-        }
-      } catch (error) {
-        if (active) {
+    if (!roomId || !expenseId) {
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      router.replace('/login');
+      return;
+    }
+    fetchExpenseById(roomId, expenseId)
+      .then((data) => {
+        if (!active) return;
+        setExpense(data);
+        setRejectionReason(data.rejection_reason ?? '');
+      })
+      .catch(
+        (error) =>
+          active &&
           setFeedback(
             error instanceof Error
               ? error.message
-              : '支出情報の取得に失敗しました。',
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadExpense();
-
+              : '支出を取得できませんでした。',
+          ),
+      )
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [resolvedExpenseId, resolvedRoomId, router]);
+  }, [expenseId, roomId, router]);
 
-  const handleApprove = async () => {
-    if (!resolvedRoomId || !resolvedExpenseId) {
-      setStatusFeedback('roomId または expenseId が指定されていません。');
-      return;
-    }
-
-    setIsUpdatingStatus(true);
-    setStatusFeedback(null);
-
+  const updateStatus = async (status: 'approved' | 'rejected') => {
+    if (!roomId || !expenseId) return;
+    setUpdating(true);
+    setFeedback(null);
     try {
-      const updatedExpense = await updateExpenseReviewStatus({
-        expenseId: resolvedExpenseId,
-        roomId: resolvedRoomId,
-        status: 'approved',
+      const updated = await updateExpenseReviewStatus({
+        expenseId,
+        rejectionReason: status === 'rejected' ? rejectionReason : undefined,
+        roomId,
+        status,
       });
-
-      setExpense(updatedExpense);
-      setRejectionReason('');
-      setStatusFeedback('支出を承認しました。');
+      setExpense(updated);
+      setRejectionOpen(false);
+      setFeedback(
+        status === 'approved'
+          ? '支出を承認しました。'
+          : '支出を差し戻しました。',
+      );
     } catch (error) {
-      setStatusFeedback(
-        error instanceof Error ? error.message : '承認に失敗しました。',
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : 'ステータスを更新できませんでした。',
       );
     } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
-  const handleReject = async () => {
-    if (!resolvedRoomId || !resolvedExpenseId) {
-      setStatusFeedback('roomId または expenseId が指定されていません。');
-      return;
-    }
-
-    setIsUpdatingStatus(true);
-    setStatusFeedback(null);
-
-    try {
-      const updatedExpense = await updateExpenseReviewStatus({
-        expenseId: resolvedExpenseId,
-        rejectionReason,
-        roomId: resolvedRoomId,
-        status: 'rejected',
-      });
-
-      setExpense(updatedExpense);
-      setRejectionReason(updatedExpense.rejection_reason ?? '');
-      setStatusFeedback('支出を差し戻しました。');
-    } catch (error) {
-      setStatusFeedback(
-        error instanceof Error ? error.message : '差し戻しに失敗しました。',
-      );
-    } finally {
-      setIsUpdatingStatus(false);
+      setUpdating(false);
     }
   };
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">支出詳細</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                登録された支出とレシート画像を確認します。
-              </ThemedText>
-            </ThemedView>
-
-            {isLoading ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
+    <ThemedView type="backgroundElement" style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.headerWrap}>
+          <AppHeader title="支出詳細" />
+        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.container}>
+            {loading ? (
+              <SurfaceCard>
                 <ThemedText type="small" themeColor="textSecondary">
-                  支出情報を読み込んでいます。
+                  支出を読み込んでいます。
                 </ThemedText>
-              </ThemedView>
+              </SurfaceCard>
             ) : null}
-
-            {feedback ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">取得状況</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {feedback}
-                </ThemedText>
-              </ThemedView>
-            ) : null}
-
             {expense ? (
               <>
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.card, { borderColor: theme.border }]}
+                <View style={styles.hero}>
+                  <Badge
+                    label={formatStatus(expense.status)}
+                    tone={statusTone(expense.status)}
+                  />
+                  <ThemedText type="title" style={styles.amount}>
+                    {formatCurrency(expense.amount)}
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {expense.paid_at.replaceAll('-', '.')}
+                  </ThemedText>
+                </View>
+
+                <SurfaceCard
+                  style={[
+                    styles.infoCard,
+                    { backgroundColor: theme.overBackground },
+                  ]}
                 >
-                  <DetailRow label="種別" value={formatExpenseType(expense)} />
-                  <DetailRow
-                    label="金額"
-                    value={formatCurrency(expense.amount)}
+                  <View style={styles.typeRow}>
+                    <RoundIcon
+                      symbol={{
+                        ios:
+                          expense.expense_type === 'common'
+                            ? 'person.2.fill'
+                            : 'person.badge.plus',
+                        android:
+                          expense.expense_type === 'common'
+                            ? 'groups'
+                            : 'person_add',
+                        web:
+                          expense.expense_type === 'common'
+                            ? 'groups'
+                            : 'person_add',
+                      }}
+                    />
+                    <View style={styles.typeText}>
+                      <ThemedText type="default" style={styles.bold}>
+                        {expense.expense_type === 'common'
+                          ? '共通経費'
+                          : '個人間立替'}
+                      </ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        {expense.category}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <View
+                    style={[styles.divider, { backgroundColor: theme.border }]}
                   />
                   <DetailRow
                     label="支払者"
@@ -195,426 +186,269 @@ export default function ExpenseDetailScreen() {
                       '未設定'
                     }
                   />
-                  <DetailRow label="カテゴリ" value={expense.category} />
                   <DetailRow label="内容" value={expense.description} />
-                  <DetailRow label="支払日" value={expense.paid_at} />
-                  <DetailRow label="割り方" value={formatSplitType(expense)} />
-                  <DetailRow
-                    label="ステータス"
-                    value={formatExpenseStatus(expense.status)}
-                  />
-                  {expense.status === 'rejected' ? (
+                  {expense.targets.length > 0 ? (
                     <DetailRow
-                      label="差し戻し理由"
-                      value={expense.rejection_reason}
+                      label="対象者"
+                      value={expense.targets
+                        .map((target) => target.display_name || target.email)
+                        .filter(Boolean)
+                        .join('、')}
                     />
                   ) : null}
-                </ThemedView>
+                </SurfaceCard>
 
-                {expense.current_user_role === 'admin' ? (
-                  <ThemedView
-                    type="backgroundElement"
-                    style={[styles.card, { borderColor: theme.border }]}
-                  >
-                    <View style={styles.sectionHeader}>
-                      <ThemedText type="smallBold">承認・差し戻し</ThemedText>
-                      <ThemedText type="small" themeColor="textSecondary">
-                        管理権限あり
-                      </ThemedText>
-                    </View>
-
-                    {statusFeedback ? (
-                      <ThemedView
-                        type="overBackground"
-                        style={styles.inlineFeedback}
-                      >
-                        <ThemedText type="small" themeColor="textSecondary">
-                          {statusFeedback}
-                        </ThemedText>
-                      </ThemedView>
-                    ) : null}
-
-                    <TextInput
-                      multiline
-                      editable={!isUpdatingStatus}
-                      placeholder="レシート画像が不鮮明、金額が違う、対象者が不明など"
-                      placeholderTextColor={theme.textSecondary}
-                      value={rejectionReason}
-                      onChangeText={setRejectionReason}
-                      style={[
-                        styles.textArea,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.background,
-                          color: theme.text,
-                        },
-                      ]}
-                    />
-
-                    <View style={styles.reviewActions}>
-                      <Pressable
-                        disabled={isUpdatingStatus}
-                        onPress={handleApprove}
-                        style={({ pressed }) => [
-                          styles.reviewButton,
-                          {
-                            backgroundColor: isUpdatingStatus
-                              ? theme.backgroundSelected
-                              : theme.primarySoft,
-                            borderColor: isUpdatingStatus
-                              ? theme.border
-                              : theme.primary,
-                          },
-                          pressed && !isUpdatingStatus && styles.pressed,
-                        ]}
-                      >
-                        <ThemedText
-                          type="smallBold"
-                          style={{
-                            color: isUpdatingStatus
-                              ? theme.textSecondary
-                              : theme.primary,
-                          }}
-                        >
-                          承認する
-                        </ThemedText>
-                      </Pressable>
-
-                      <Pressable
-                        disabled={isUpdatingStatus}
-                        onPress={handleReject}
-                        style={({ pressed }) => [
-                          styles.reviewButton,
-                          {
-                            backgroundColor: isUpdatingStatus
-                              ? theme.backgroundSelected
-                              : 'transparent',
-                            borderColor: isUpdatingStatus
-                              ? theme.border
-                              : theme.danger,
-                          },
-                          pressed && !isUpdatingStatus && styles.pressed,
-                        ]}
-                      >
-                        <ThemedText
-                          type="smallBold"
-                          style={{
-                            color: isUpdatingStatus
-                              ? theme.textSecondary
-                              : theme.danger,
-                          }}
-                        >
-                          差し戻す
-                        </ThemedText>
-                      </Pressable>
-                    </View>
-                  </ThemedView>
-                ) : null}
-
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.card, { borderColor: theme.border }]}
-                >
-                  <View style={styles.sectionHeader}>
-                    <ThemedText type="smallBold">対象者</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {expense.expense_type === 'common'
-                        ? '全体'
-                        : `${expense.targets.length}名`}
-                    </ThemedText>
-                  </View>
-
-                  {expense.expense_type === 'common' ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      共通経費としてroom全体に紐づく支出です。
-                    </ThemedText>
-                  ) : expense.targets.length === 0 ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      対象者は登録されていません。
-                    </ThemedText>
-                  ) : (
-                    <View style={styles.targetList}>
-                      {expense.targets.map((target) => (
-                        <View
-                          key={target.id}
-                          style={[
-                            styles.targetRow,
-                            {
-                              backgroundColor: theme.background,
-                              borderColor: theme.border,
-                            },
-                          ]}
-                        >
-                          <View style={styles.targetMain}>
-                            <ThemedText type="smallBold">
-                              {target.display_name ||
-                                target.email ||
-                                '対象者未設定'}
-                            </ThemedText>
-                            {target.email ? (
-                              <ThemedText
-                                type="small"
-                                themeColor="textSecondary"
-                              >
-                                {target.email}
-                              </ThemedText>
-                            ) : null}
-                          </View>
-                          <ThemedText type="smallBold">
-                            {target.amount_share
-                              ? formatCurrency(target.amount_share)
-                              : '均等'}
-                          </ThemedText>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </ThemedView>
-
-                <ThemedView
-                  type="backgroundElement"
-                  style={[styles.card, { borderColor: theme.border }]}
-                >
-                  <View style={styles.sectionHeader}>
-                    <ThemedText type="smallBold">レシート</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {expense.receipt_image_url ? '画像あり' : '画像なし'}
-                    </ThemedText>
-                  </View>
+                <View style={styles.section}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    レシート・領収書
+                  </ThemedText>
                   {expense.receipt_image_url ? (
                     <Image
                       source={{ uri: expense.receipt_image_url }}
-                      style={styles.receiptImage}
+                      style={styles.receipt}
+                      resizeMode="cover"
                     />
                   ) : (
-                    <View style={styles.noReceipt}>
-                      <DetailRow
-                        label="理由"
-                        value={expense.no_receipt_reason}
+                    <SurfaceCard style={styles.noReceipt}>
+                      <SymbolView
+                        name={{
+                          ios: 'doc.text',
+                          android: 'receipt_long',
+                          web: 'receipt_long',
+                        }}
+                        size={26}
+                        tintColor={theme.textSecondary}
+                        fallback={
+                          <Text style={{ color: theme.textSecondary }}>▤</Text>
+                        }
                       />
-                      <DetailRow
-                        label="補足メモ"
-                        value={expense.no_receipt_note}
-                      />
-                    </View>
+                      <View style={styles.noReceiptText}>
+                        <ThemedText type="smallBold">レシートなし</ThemedText>
+                        <ThemedText type="small" themeColor="textSecondary">
+                          {expense.no_receipt_reason || '-'} /{' '}
+                          {expense.no_receipt_note || '-'}
+                        </ThemedText>
+                      </View>
+                    </SurfaceCard>
                   )}
-                </ThemedView>
+                </View>
+
+                <SurfaceCard
+                  style={[
+                    styles.integrationCard,
+                    { backgroundColor: theme.overBackground },
+                  ]}
+                >
+                  <ThemedText type="small" themeColor="textSecondary">
+                    連携ステータス
+                  </ThemedText>
+                  <IntegrationRow
+                    label="Discord"
+                    status="送信済み"
+                    symbol={{
+                      ios: 'message.fill',
+                      android: 'chat',
+                      web: 'chat',
+                    }}
+                  />
+                  <IntegrationRow
+                    label="Google Sheets"
+                    status="反映済み"
+                    symbol={{
+                      ios: 'tablecells.fill',
+                      android: 'table_chart',
+                      web: 'table_chart',
+                    }}
+                  />
+                </SurfaceCard>
+
+                {rejectionOpen ? (
+                  <SurfaceCard style={styles.rejectCard}>
+                    <ThemedText type="smallBold">差し戻し理由</ThemedText>
+                    <TextInput
+                      autoFocus
+                      multiline
+                      onChangeText={setRejectionReason}
+                      placeholder="修正してほしい内容を入力してください"
+                      placeholderTextColor={theme.textDisabled}
+                      style={[
+                        styles.rejectInput,
+                        {
+                          backgroundColor: theme.overBackground,
+                          color: theme.text,
+                        },
+                      ]}
+                      textAlignVertical="top"
+                      value={rejectionReason}
+                    />
+                  </SurfaceCard>
+                ) : null}
+
+                {feedback ? (
+                  <ThemedText
+                    type="small"
+                    themeColor={
+                      feedback.includes('しました') ? 'textSecondary' : 'danger'
+                    }
+                    style={styles.feedback}
+                  >
+                    {feedback}
+                  </ThemedText>
+                ) : null}
+
+                {expense.current_user_role === 'admin' ? (
+                  <View style={styles.actions}>
+                    <PrimaryButton
+                      disabled={updating}
+                      onPress={() => updateStatus('approved')}
+                    >
+                      {updating ? '更新中…' : '承認する'}
+                    </PrimaryButton>
+                    <SecondaryButton
+                      danger
+                      onPress={() =>
+                        rejectionOpen
+                          ? updateStatus('rejected')
+                          : setRejectionOpen(true)
+                      }
+                    >
+                      {rejectionOpen ? 'この理由で差し戻す' : '差し戻す'}
+                    </SecondaryButton>
+                  </View>
+                ) : null}
               </>
             ) : null}
-
-            <View style={styles.actions}>
-              {resolvedRoomId ? (
-                <Link href={`/rooms/${resolvedRoomId}` as any} asChild>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.ghostButton,
-                      { borderColor: theme.primary },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="smallBold"
-                      style={{ color: theme.primary }}
-                    >
-                      支出一覧へ
-                    </ThemedText>
-                  </Pressable>
-                </Link>
-              ) : null}
-
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => [
-                  styles.ghostButton,
-                  { borderColor: theme.border },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="smallBold"
-                  style={{ color: theme.textSecondary }}
-                >
-                  戻る
+            {!expense && feedback ? (
+              <SurfaceCard>
+                <ThemedText type="small" themeColor="danger">
+                  {feedback}
                 </ThemedText>
-              </Pressable>
-            </View>
-          </ThemedView>
+              </SurfaceCard>
+            ) : null}
+          </View>
         </ScrollView>
       </SafeAreaView>
-      <BottomNav />
     </ThemedView>
   );
 }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string | null;
-}) {
+function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.detailRow}>
       <ThemedText type="small" themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText type="smallBold" style={styles.detailValue}>
-        {value || '-'}
+      <ThemedText type="default" style={styles.detailValue}>
+        {value}
       </ThemedText>
     </View>
   );
 }
-
-function formatExpenseType(expense: ExpenseDetailRecord) {
-  return expense.expense_type === 'common' ? '共通経費' : '個人間立替';
+function IntegrationRow({
+  label,
+  status,
+  symbol,
+}: {
+  label: string;
+  status: string;
+  symbol: React.ComponentProps<typeof SymbolView>['name'];
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.integrationRow}>
+      <View
+        style={[styles.integrationIcon, { backgroundColor: theme.primarySoft }]}
+      >
+        <SymbolView
+          name={symbol}
+          size={18}
+          tintColor={theme.primary}
+          fallback={<Text style={{ color: theme.primary }}>•</Text>}
+        />
+      </View>
+      <ThemedText type="default" style={styles.integrationLabel}>
+        {label}
+      </ThemedText>
+      <ThemedText type="small" style={styles.success}>
+        ◎ {status}
+      </ThemedText>
+    </View>
+  );
 }
-
 function formatCurrency(value: number) {
-  return `${value.toLocaleString('ja-JP')}円`;
+  return `¥${value.toLocaleString('ja-JP')}`;
 }
-
-function formatExpenseStatus(status: ExpenseDetailRecord['status']) {
-  const labels: Record<ExpenseDetailRecord['status'], string> = {
-    approved: '承認済み',
-    pending: '未確認',
-    rejected: '差し戻し',
-    settled: '精算済み',
-  };
-
-  return labels[status] ?? status;
+function formatStatus(status: ExpenseDetailRecord['status']) {
+  return {
+    approved: '● 承認済み',
+    pending: '● 承認待ち',
+    rejected: '● 差し戻し',
+    settled: '● 精算済み',
+  }[status];
 }
-
-function formatSplitType(expense: ExpenseDetailRecord) {
-  if (expense.expense_type === 'common') {
-    return '-';
-  }
-
-  if (expense.split_type === 'custom') {
-    return '金額指定';
-  }
-
-  return '均等';
+function statusTone(
+  status: ExpenseDetailRecord['status'],
+): 'danger' | 'neutral' | 'success' {
+  return status === 'rejected'
+    ? 'danger'
+    : status === 'pending'
+      ? 'neutral'
+      : 'success';
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
+  actions: { gap: 12, marginTop: 6 },
+  amount: { fontSize: 36, lineHeight: 44 },
+  bold: { fontWeight: '700' },
+  container: { width: '100%', maxWidth: MaxContentWidth, gap: 24 },
+  content: {
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
-  },
-  container: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  header: {
-    gap: Spacing.two,
-  },
-  alert: {
-    gap: Spacing.one,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  card: {
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  inlineFeedback: {
-    borderRadius: Radius.control,
-    padding: Spacing.two,
-  },
-  textArea: {
-    minHeight: 96,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-  reviewActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  reviewButton: {
-    minHeight: 48,
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 34,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: Spacing.three,
+    gap: 18,
   },
-  detailValue: {
-    flex: 1,
-    textAlign: 'right',
-  },
-  receiptImage: {
+  detailValue: { flex: 1, fontWeight: '600', textAlign: 'right' },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 2 },
+  feedback: { textAlign: 'center' },
+  headerWrap: {
     width: '100%',
-    aspectRatio: 4 / 3,
-    borderRadius: Radius.control,
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: 18,
   },
-  noReceipt: {
-    gap: Spacing.one,
-  },
-  targetList: {
-    gap: Spacing.two,
-  },
-  targetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.two,
-  },
-  targetMain: {
-    flex: 1,
-    gap: 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  ghostButton: {
-    minHeight: 48,
+  hero: { alignItems: 'center', gap: 6, paddingVertical: 8 },
+  infoCard: { gap: 14 },
+  integrationCard: { gap: 12 },
+  integrationIcon: {
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 17,
+  },
+  integrationLabel: { flex: 1, fontWeight: '600' },
+  integrationRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  noReceipt: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  noReceiptText: { flex: 1 },
+  receipt: { width: '100%', aspectRatio: 4 / 3, borderRadius: Radius.control },
+  rejectCard: { gap: 10 },
+  rejectInput: {
+    minHeight: 90,
     borderRadius: Radius.control,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
+    padding: 12,
+    fontFamily: Fonts.sans,
+    fontSize: 16,
   },
-  pressed: {
-    opacity: 0.72,
-  },
+  safeArea: { flex: 1 },
+  screen: { flex: 1 },
+  section: { gap: 8 },
+  success: { color: '#22b657' },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  typeText: { flex: 1 },
 });

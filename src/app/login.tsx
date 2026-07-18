@@ -1,72 +1,58 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { SymbolView } from 'expo-symbols';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PrimaryButton } from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { sendMagicLink, verifyEmailOtp } from '@/lib/auth';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 
 export default function LoginScreen() {
-  const theme = useTheme();
   const router = useRouter();
+  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [submittingAction, setSubmittingAction] = useState<
-    'link' | 'otp' | null
-  >(null);
+  const [mailSent, setMailSent] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const canSendMagicLink = email.trim().length > 0 && submittingAction === null;
-  const canVerifyOtp =
-    email.trim().length > 0 &&
-    otp.trim().length === 6 &&
-    submittingAction === null;
+  const [submitting, setSubmitting] = useState<'link' | 'otp' | null>(null);
 
   useEffect(() => {
     let active = true;
-
-    async function redirectAuthenticatedUser() {
-      if (!isSupabaseConfigured) {
-        return;
-      }
-
-      const supabase = getSupabaseClient();
-      const { data } = await supabase.auth.getUser();
-      if (active && data.user) {
-        router.replace('/');
-      }
-    }
-
-    redirectAuthenticatedUser();
-
+    if (!isSupabaseConfigured) return;
+    getSupabaseClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (active && data.user) router.replace('/rooms');
+      });
     return () => {
       active = false;
     };
   }, [router]);
 
-  const handleSendMagicLink = async () => {
-    setSubmittingAction('link');
+  const sendLink = async () => {
+    setSubmitting('link');
     setFeedback(null);
-
     try {
-      if (!isSupabaseConfigured) {
+      if (!isSupabaseConfigured)
         throw new Error(
           '現在ログインできません。時間をおいて再度お試しください。',
         );
-      }
-
-      const redirectUrl = await sendMagicLink(email);
+      await sendMagicLink(email);
+      setMailSent(true);
       setFeedback(
-        `メールを送信しました。メール内のリンクを開くか、認証コードを入力してください。${__DEV__ ? `\n\nRedirect URL:\n${redirectUrl}` : ''}`,
+        'メールを送信しました。リンクを開くか、6桁の認証コードを入力してください。',
       );
     } catch (error) {
       setFeedback(
@@ -75,29 +61,24 @@ export default function LoginScreen() {
           : 'ログインメールを送信できませんでした。',
       );
     } finally {
-      setSubmittingAction(null);
+      setSubmitting(null);
     }
   };
 
-  const handleVerifyOtp = async () => {
-    setSubmittingAction('otp');
+  const verifyOtp = async () => {
+    setSubmitting('otp');
     setFeedback(null);
-
     try {
-      if (!isSupabaseConfigured) {
-        throw new Error(
-          '現在ログインできません。時間をおいて再度お試しください。',
-        );
-      }
-
       await verifyEmailOtp(email, otp);
-      router.replace('/');
+      router.replace('/rooms');
     } catch (error) {
       setFeedback(
-        error instanceof Error ? error.message : 'ログインできませんでした。',
+        error instanceof Error
+          ? error.message
+          : '認証コードを確認できませんでした。',
       );
     } finally {
-      setSubmittingAction(null);
+      setSubmitting(null);
     }
   };
 
@@ -105,213 +86,193 @@ export default function LoginScreen() {
     <ThemedView type="backgroundElement" style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
         >
-          <ThemedView type="backgroundElement" style={styles.container}>
-            <ThemedView type="backgroundElement" style={styles.brand}>
+          <View style={styles.container}>
+            <View style={styles.brand}>
+              <View
+                style={[styles.logo, { backgroundColor: theme.primarySoft }]}
+              >
+                <SymbolView
+                  name={{
+                    ios: 'wallet.bifold.fill',
+                    android: 'account_balance_wallet',
+                    web: 'account_balance_wallet',
+                  }}
+                  size={34}
+                  tintColor={theme.primary}
+                  fallback={
+                    <Text style={{ color: theme.primary, fontSize: 28 }}>
+                      ¥
+                    </Text>
+                  }
+                />
+              </View>
               <ThemedText type="title" style={styles.appName}>
                 Flashami Money
               </ThemedText>
-            </ThemedView>
+              <ThemedText themeColor="textSecondary" style={styles.tagline}>
+                イベントや旅行の支出をスマートに管理
+              </ThemedText>
+            </View>
 
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }, Shadows.card]}
-            >
-              <Field label="メールアドレス">
-                <TextInput
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  placeholder="name@example.com"
-                  placeholderTextColor={theme.textSecondary}
-                  value={email}
-                  onChangeText={setEmail}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: theme.border,
-                      color: theme.text,
-                      backgroundColor: theme.overBackground,
-                    },
-                  ]}
-                />
-              </Field>
-
-              <Pressable
-                disabled={!canSendMagicLink}
-                onPress={handleSendMagicLink}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  {
-                    backgroundColor: !canSendMagicLink
-                      ? theme.backgroundSelected
-                      : theme.primary,
-                  },
-                  pressed && canSendMagicLink && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="default"
-                  style={{
-                    fontWeight: 'bold',
-                    color: !canSendMagicLink ? theme.textSecondary : '#ffffff',
-                  }}
-                >
-                  {submittingAction === 'link'
-                    ? '送信中...'
-                    : 'ログインメールを送信'}
-                </ThemedText>
-              </Pressable>
-
-              <View
-                style={[styles.divider, { backgroundColor: theme.border }]}
-              />
-
-              <Field label="認証コード">
-                <TextInput
-                  inputMode="numeric"
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  placeholder="123456"
-                  placeholderTextColor={theme.textSecondary}
-                  value={otp}
-                  onChangeText={setOtp}
-                  style={[
-                    styles.input,
-                    {
-                      borderColor: theme.border,
-                      color: theme.text,
-                      backgroundColor: theme.overBackground,
-                    },
-                  ]}
-                />
-              </Field>
-
-              <Pressable
-                disabled={!canVerifyOtp}
-                onPress={handleVerifyOtp}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  {
-                    borderColor: canVerifyOtp ? theme.primary : theme.border,
-                    backgroundColor: !canVerifyOtp
-                      ? theme.backgroundSelected
-                      : 'transparent',
-                  },
-                  pressed && canVerifyOtp && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="default"
-                  style={{
-                    fontWeight: 'bold',
-                    color: !canVerifyOtp ? theme.textSecondary : theme.primary,
-                  }}
-                >
-                  {submittingAction === 'otp' ? 'ログイン中...' : 'ログイン'}
-                </ThemedText>
-              </Pressable>
-            </ThemedView>
-
-            {feedback ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[
-                  styles.feedback,
-                  { borderColor: theme.border },
-                  Shadows.card,
-                ]}
-              >
+            <View style={styles.form}>
+              <View style={styles.field}>
                 <ThemedText type="small" themeColor="textSecondary">
+                  メールアドレス
+                </ThemedText>
+                <View
+                  style={[
+                    styles.inputShell,
+                    { backgroundColor: theme.overBackground },
+                  ]}
+                >
+                  <SymbolView
+                    name={{
+                      ios: 'envelope',
+                      android: 'mail_outline',
+                      web: 'mail_outline',
+                    }}
+                    size={21}
+                    tintColor={theme.textDisabled}
+                    fallback={
+                      <Text style={{ color: theme.textDisabled }}>✉</Text>
+                    }
+                  />
+                  <TextInput
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    keyboardType="email-address"
+                    onChangeText={setEmail}
+                    placeholder="example@mail.com"
+                    placeholderTextColor={theme.textDisabled}
+                    style={[styles.input, { color: theme.text }]}
+                    value={email}
+                  />
+                </View>
+              </View>
+
+              <PrimaryButton
+                disabled={!email.trim() || submitting !== null}
+                onPress={sendLink}
+              >
+                {submitting === 'link' ? '送信中…' : 'ログイン →'}
+              </PrimaryButton>
+
+              {mailSent ? (
+                <View style={styles.otpSection}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    メールに届いた6桁のコード
+                  </ThemedText>
+                  <TextInput
+                    inputMode="numeric"
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    onChangeText={setOtp}
+                    placeholder="000000"
+                    placeholderTextColor={theme.textDisabled}
+                    style={[
+                      styles.otpInput,
+                      {
+                        backgroundColor: theme.overBackground,
+                        borderColor: theme.border,
+                        color: theme.text,
+                      },
+                    ]}
+                    value={otp}
+                  />
+                  <Pressable
+                    disabled={otp.length !== 6 || submitting !== null}
+                    onPress={verifyOtp}
+                  >
+                    <ThemedText type="linkPrimary" style={styles.verifyLink}>
+                      {submitting === 'otp'
+                        ? '確認中…'
+                        : '認証コードでログイン'}
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {feedback ? (
+                <ThemedText
+                  type="small"
+                  themeColor={mailSent ? 'textSecondary' : 'danger'}
+                  style={styles.feedback}
+                >
                   {feedback}
                 </ThemedText>
-              </ThemedView>
-            ) : null}
-          </ThemedView>
+              ) : null}
+            </View>
+
+            <ThemedText
+              type="small"
+              themeColor="textSecondary"
+              style={styles.note}
+            >
+              登録済みのメールアドレスでログインしてください
+            </ThemedText>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
-function Field({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold">{label}</ThemedText>
-      {children}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
+  appName: { fontSize: 28, lineHeight: 35, textAlign: 'center' },
+  brand: { alignItems: 'center', gap: 10 },
+  container: {
+    width: '100%',
+    maxWidth: Math.min(MaxContentWidth, 390),
+    gap: 36,
   },
-  safeArea: {
-    flex: 1,
-  },
-  scrollContent: {
+  content: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
   },
-  container: {
-    width: '100%',
-    maxWidth: Math.min(MaxContentWidth, 480),
-    gap: Spacing.four,
-  },
-  brand: {
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  appName: {
-    textAlign: 'center',
-  },
-  form: {
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.panel,
-    padding: Spacing.four,
-  },
-  field: {
-    gap: Spacing.two,
-  },
+  feedback: { textAlign: 'center' },
+  field: { gap: 8 },
+  form: { gap: 30 },
   input: {
+    flex: 1,
+    minHeight: 54,
+    paddingHorizontal: 12,
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+  },
+  inputShell: {
+    minHeight: 54,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.control,
+    paddingLeft: 16,
+  },
+  logo: {
+    width: 68,
+    height: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  note: { textAlign: 'center' },
+  otpInput: {
     minHeight: 52,
     borderWidth: 1,
     borderRadius: Radius.control,
     paddingHorizontal: Spacing.three,
-    fontSize: 16,
+    fontFamily: Fonts.sans,
+    fontSize: 20,
+    letterSpacing: 6,
+    textAlign: 'center',
   },
-  primaryButton: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-  },
-  secondaryButton: {
-    minHeight: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-  },
-  divider: {
-    height: 1,
-  },
-  feedback: {
-    borderWidth: 1,
-    borderRadius: Radius.panel,
-    padding: Spacing.three,
-  },
-  pressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.98 }],
-  },
+  otpSection: { gap: 10 },
+  safeArea: { flex: 1 },
+  screen: { flex: 1 },
+  tagline: { maxWidth: 310, textAlign: 'center' },
+  verifyLink: { textAlign: 'center' },
 });
