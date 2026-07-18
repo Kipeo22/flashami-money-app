@@ -7,21 +7,21 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#001435',
-    background: '#f5f7fa',
+    text: '#23221e',
+    background: '#fbfaf9',
     backgroundElement: '#ffffff',
-    backgroundSelected: '#eef1f4',
-    border: '#e5e8ed',
-    brand: '#0070ba',
-    danger: '#d20021',
-    link: '#0070ba',
-    overBackground: '#f5f7fa',
-    primary: '#003087',
-    primarySoft: '#eaf2ff',
-    primaryPressed: '#001c64',
-    textDisabled: '#9da3a6',
-    textSecondary: '#687173',
-    warning: '#ffb81c',
+    backgroundSelected: '#f0efed',
+    border: '#e4e1dd',
+    brand: '#0077c7',
+    danger: '#d9272e',
+    link: '#0071c1',
+    overBackground: '#f6f5f3',
+    primary: '#0879df',
+    primarySoft: '#eaf4ff',
+    primaryPressed: '#005fb8',
+    textDisabled: '#aaa69f',
+    textSecondary: '#706d65',
+    warning: '#f59e0b',
   },
   dark: {
     text: '#ffffff',
@@ -46,8 +46,8 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'Hiragino Sans',
+    /** Use the native San Francisco / Japanese system fallback on iOS. */
+    sans: undefined,
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     /** iOS `UIFontDescriptorSystemDesignRounded` */
@@ -80,8 +80,8 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  control: 12,
-  panel: 16,
+  control: 10,
+  panel: 18,
   pill: 999,
 } as const;
 
@@ -91,14 +91,14 @@ export const Shadows = {
       ios: {
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
+        shadowOpacity: 0.07,
+        shadowRadius: 10,
       },
       android: {
         elevation: 2,
       },
       default: {
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        boxShadow: '0 4px 16px rgba(35, 34, 30, 0.07)',
       },
     }) ?? {},
   tabBar:
@@ -119,4 +119,4 @@ export const Shadows = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 430;

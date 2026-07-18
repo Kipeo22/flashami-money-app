@@ -1,33 +1,29 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import {
-  Controller,
-  useForm,
-  useWatch,
-  type FieldErrors,
-  type FieldValues,
-  type Path,
-  type PathValue,
-} from 'react-hook-form';
+import { SymbolView } from 'expo-symbols';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { z } from 'zod';
 
-import { BottomNav } from '@/components/bottom-nav';
+import {
+  AppHeader,
+  PrimaryButton,
+  SecondaryButton,
+  SurfaceCard,
+} from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   createExpenseWithTargets,
@@ -35,20 +31,10 @@ import {
   type ExpenseType,
   type SplitType,
 } from '@/lib/expenses';
-import { isValidIsoDate, type RoomMemberRecord } from '@/lib/rooms';
+import type { RoomMemberRecord } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-const expenseTypeOptions: { label: string; value: ExpenseType }[] = [
-  { label: '共通経費', value: 'common' },
-  { label: '個人間立替', value: 'personal' },
-];
-
-const splitTypeOptions: { label: string; value: SplitType }[] = [
-  { label: '均等', value: 'equal' },
-  { label: '金額指定', value: 'custom' },
-];
-
-const categoryOptions = [
+const categories = [
   '宿泊費',
   '交通費',
   '食費',
@@ -57,1055 +43,639 @@ const categoryOptions = [
   '観光費',
   'その他',
 ];
-
 const noReceiptReasons = [
-  'レシートが発行されなかった',
-  'レシートをもらい忘れた',
-  '交通費のためレシートがない',
-  '個人間送金のためレシートがない',
+  '発行されなかった',
+  'もらい忘れた',
+  '交通費',
+  '個人間送金',
   'その他',
 ];
 
-const defaultValues = {
-  amountText: '',
-  category: '',
-  customShares: {},
-  description: '',
-  expenseType: 'common',
-  noReceiptNote: '',
-  noReceiptReason: '',
-  receiptImageBase64: '',
-  paidAt: '',
-  receiptImageUrl: '',
-  selectedMemberIds: [],
-  splitType: 'equal',
-} satisfies ExpenseFormValues;
-
-const expenseFormSchema = z
-  .object({
-    amountText: z
-      .string()
-      .refine(
-        (value) => parsePositiveInteger(value) !== null,
-        '金額は1円以上の整数で入力してください。',
-      ),
-    category: z
-      .string()
-      .refine(
-        (value) => value.trim().length > 0,
-        'カテゴリを選択してください。',
-      ),
-    customShares: z.record(z.string(), z.string()),
-    description: z
-      .string()
-      .refine((value) => value.trim().length > 0, '内容を入力してください。'),
-    expenseType: z.enum(['common', 'personal']),
-    noReceiptNote: z.string(),
-    noReceiptReason: z.string(),
-    paidAt: z
-      .string()
-      .refine(
-        (value) => isValidIsoDate(value),
-        '支払日は YYYY-MM-DD 形式で入力してください。',
-      ),
-    receiptImageBase64: z.string(),
-    receiptImageUrl: z.string(),
-    selectedMemberIds: z.array(z.string()),
-    splitType: z.enum(['equal', 'custom']),
-  })
-  .superRefine((value, context) => {
-    const amount = parsePositiveInteger(value.amountText);
-    const hasReceiptImage = value.receiptImageBase64.trim().length > 0;
-
-    if (!hasReceiptImage && !value.noReceiptReason.trim()) {
-      context.addIssue({
-        code: 'custom',
-        message: 'レシート画像がない場合はレシートなし理由を選択してください。',
-        path: ['noReceiptReason'],
-      });
-    }
-
-    if (!hasReceiptImage && !value.noReceiptNote.trim()) {
-      context.addIssue({
-        code: 'custom',
-        message: 'レシート画像がない場合は補足メモを入力してください。',
-        path: ['noReceiptNote'],
-      });
-    }
-
-    if (value.expenseType !== 'personal') {
-      return;
-    }
-
-    if (value.selectedMemberIds.length === 0) {
-      context.addIssue({
-        code: 'custom',
-        message: '個人間立替の場合は対象者を1人以上選択してください。',
-        path: ['selectedMemberIds'],
-      });
-    }
-
-    if (value.splitType !== 'custom') {
-      return;
-    }
-
-    let targetTotal = 0;
-    for (const memberId of value.selectedMemberIds) {
-      const share = parsePositiveInteger(value.customShares[memberId] ?? '');
-
-      if (share === null) {
-        context.addIssue({
-          code: 'custom',
-          message:
-            '金額指定の場合は対象者ごとの金額を1円以上の整数で入力してください。',
-          path: ['customShares', memberId],
-        });
-        continue;
-      }
-
-      targetTotal += share;
-    }
-
-    if (amount !== null && targetTotal !== amount) {
-      context.addIssue({
-        code: 'custom',
-        message: '対象者ごとの金額合計を支出金額と一致させてください。',
-        path: ['customShares'],
-      });
-    }
-  });
-
-type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
-
-export default function ExpenseCreateScreen() {
-  const { roomId } = useLocalSearchParams<{ roomId?: string }>();
+export default function ExpenseFormScreen() {
+  const params = useLocalSearchParams<{ roomId?: string; type?: string }>();
+  const roomId = Array.isArray(params.roomId) ? undefined : params.roomId;
+  const initialType: ExpenseType =
+    params.type === 'personal' ? 'personal' : 'common';
   const router = useRouter();
   const theme = useTheme();
-  const resolvedRoomId = Array.isArray(roomId) ? undefined : roomId;
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('');
+  const [description, setDescription] = useState('');
+  const [paidAt, setPaidAt] = useState(today());
+  const [expenseType, setExpenseType] = useState<ExpenseType>(initialType);
+  const [splitType, setSplitType] = useState<SplitType>('equal');
   const [members, setMembers] = useState<RoomMemberRecord[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [shares, setShares] = useState<Record<string, string>>({});
+  const [receiptUri, setReceiptUri] = useState('');
+  const [receiptBase64, setReceiptBase64] = useState('');
+  const [noReceiptReason, setNoReceiptReason] = useState('');
+  const [noReceiptNote, setNoReceiptNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const {
-    control,
-    formState: { errors, isSubmitting },
-    handleSubmit,
-    reset,
-    setValue,
-  } = useForm<ExpenseFormValues>({
-    defaultValues,
-    resolver: zodResolver(expenseFormSchema),
-  });
-
-  const amountText = useWatch({ control, name: 'amountText' });
-  const category = useWatch({ control, name: 'category' });
-  const customShares = useWatch({ control, name: 'customShares' });
-  const expenseType = useWatch({ control, name: 'expenseType' });
-  const noReceiptReason = useWatch({ control, name: 'noReceiptReason' });
-  const receiptImageUrl = useWatch({ control, name: 'receiptImageUrl' });
-  const selectedMemberIds = useWatch({ control, name: 'selectedMemberIds' });
-  const splitType = useWatch({ control, name: 'splitType' });
-  const isSubmitDisabled = isSubmitting || !isSupabaseConfigured;
 
   useEffect(() => {
     let active = true;
-
-    async function loadMembers() {
-      if (!resolvedRoomId) {
-        setIsLoadingMembers(false);
-        return;
-      }
-
-      if (!isSupabaseConfigured) {
-        router.replace('/login');
-        return;
-      }
-
-      setIsLoadingMembers(true);
-      try {
-        const memberData = await fetchExpenseTargetCandidates(resolvedRoomId);
-        if (active) {
-          setMembers(memberData);
-        }
-      } catch (error) {
-        if (active) {
+    if (!roomId || !isSupabaseConfigured) return;
+    fetchExpenseTargetCandidates(roomId)
+      .then((data) => active && setMembers(data))
+      .catch(
+        (error) =>
+          active &&
           setFeedback(
             error instanceof Error
               ? error.message
-              : '参加者の取得に失敗しました。',
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoadingMembers(false);
-        }
-      }
-    }
-
-    loadMembers();
-
+              : '参加者を取得できませんでした。',
+          ),
+      );
     return () => {
       active = false;
     };
-  }, [resolvedRoomId, router]);
+  }, [roomId]);
 
-  const selectedTargets = useMemo(
-    () =>
-      members
-        .filter((member) => selectedMemberIds.includes(member.id))
-        .map((member) => ({
-          amountShare:
-            splitType === 'custom'
-              ? parsePositiveInteger(customShares[member.id] ?? '')
-              : null,
-          member,
-        })),
-    [customShares, members, selectedMemberIds, splitType],
+  const selectedMembers = useMemo(
+    () => members.filter((member) => selectedIds.includes(member.id)),
+    [members, selectedIds],
   );
 
-  const setFormValue = <TName extends Path<ExpenseFormValues>>(
-    name: TName,
-    value: PathValue<ExpenseFormValues, TName>,
-  ) => {
-    setValue(name, value, {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    });
-  };
-
-  const selectExpenseType = (nextExpenseType: ExpenseType) => {
-    setFormValue('expenseType', nextExpenseType);
-
-    if (nextExpenseType === 'common') {
-      setFormValue('selectedMemberIds', []);
-      setFormValue('splitType', 'equal');
-      setFormValue('customShares', {});
-    }
-  };
-
-  const selectSplitType = (nextSplitType: SplitType) => {
-    setFormValue('splitType', nextSplitType);
-
-    if (nextSplitType === 'equal') {
-      setFormValue('customShares', {});
-    }
-  };
-
-  const toggleMember = (memberId: string) => {
-    const nextMemberIds = selectedMemberIds.includes(memberId)
-      ? selectedMemberIds.filter((id) => id !== memberId)
-      : [...selectedMemberIds, memberId];
-    const nextCustomShares = { ...customShares };
-
-    if (!nextMemberIds.includes(memberId)) {
-      delete nextCustomShares[memberId];
-    }
-
-    setFormValue('selectedMemberIds', nextMemberIds);
-    setFormValue('customShares', nextCustomShares);
-  };
-
-  const setReceiptImage = (asset: ImagePicker.ImagePickerAsset) => {
-    if (!asset.base64) {
-      setFeedback('レシート画像データを読み込めませんでした。');
+  const setReceipt = (asset?: ImagePicker.ImagePickerAsset) => {
+    if (!asset?.base64) {
+      setFeedback('レシート画像を読み込めませんでした。');
       return;
     }
-
-    setFormValue('receiptImageUrl', asset.uri);
-    setFormValue('receiptImageBase64', asset.base64);
-    setFormValue('noReceiptReason', '');
-    setFormValue('noReceiptNote', '');
+    setReceiptUri(asset.uri);
+    setReceiptBase64(asset.base64);
+    setNoReceiptReason('');
+    setNoReceiptNote('');
     setFeedback(null);
   };
 
-  const clearReceiptImage = () => {
-    setFormValue('receiptImageUrl', '');
-    setFormValue('receiptImageBase64', '');
-  };
-
-  const pickReceiptFromLibrary = async () => {
-    const permissionResult =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      setFeedback('画像ライブラリへのアクセス許可が必要です。');
+  const takePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setFeedback('レシートを撮影するにはカメラの許可が必要です。');
       return;
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: false,
-      base64: true,
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      if (asset) {
-        setReceiptImage(asset);
-      }
-    }
-  };
-
-  const takeReceiptPhoto = async () => {
-    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-
-    if (!permissionResult.granted) {
-      setFeedback('カメラへのアクセス許可が必要です。');
-      return;
-    }
-
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
       base64: true,
       mediaTypes: ['images'],
       quality: 0.8,
     });
-
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      if (asset) {
-        setReceiptImage(asset);
-      }
-    }
+    if (!result.canceled) setReceipt(result.assets[0]);
   };
 
-  const onValidSubmit = async (values: ExpenseFormValues) => {
-    if (!resolvedRoomId) {
-      setFeedback('roomId が指定されていません。');
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      base64: true,
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+    if (!result.canceled) setReceipt(result.assets[0]);
+  };
+
+  const toggleMember = (id: string) => {
+    setSelectedIds((ids) =>
+      ids.includes(id)
+        ? ids.filter((candidate) => candidate !== id)
+        : [...ids, id],
+    );
+  };
+
+  const submit = async () => {
+    if (!roomId) {
+      setFeedback('roomが指定されていません。');
       return;
     }
-
-    const amount = parsePositiveInteger(values.amountText);
-    if (amount === null) {
-      setFeedback('金額は1円以上の整数で入力してください。');
-      return;
-    }
-
+    setSubmitting(true);
     setFeedback(null);
-
     try {
+      const parsedAmount = Number(amount.replaceAll(',', ''));
       const expense = await createExpenseWithTargets({
-        amount,
-        category: values.category,
-        description: values.description,
-        expenseType: values.expenseType,
-        noReceiptNote: values.noReceiptNote,
-        noReceiptReason: values.noReceiptReason,
-        paidAt: values.paidAt,
-        receiptImageBase64: values.receiptImageBase64,
-        receiptImageUrl: values.receiptImageUrl,
-        roomId: resolvedRoomId,
-        splitType: values.expenseType === 'personal' ? values.splitType : null,
-        targets: values.expenseType === 'personal' ? selectedTargets : [],
+        amount: parsedAmount,
+        category,
+        description,
+        expenseType,
+        noReceiptNote,
+        noReceiptReason,
+        paidAt,
+        receiptImageBase64: receiptBase64,
+        receiptImageUrl: receiptUri,
+        roomId,
+        splitType: expenseType === 'personal' ? splitType : null,
+        targets: selectedMembers.map((member) => ({
+          amountShare:
+            splitType === 'custom' ? Number(shares[member.id] ?? 0) : null,
+          member,
+        })),
       });
-
-      reset(defaultValues);
-      router.replace(
-        `/rooms/${resolvedRoomId}/expenses/${expense.id}` as never,
-      );
+      router.replace(`/rooms/${roomId}/expenses/${expense.id}` as never);
     } catch (error) {
       setFeedback(
-        error instanceof Error ? error.message : '支出の登録に失敗しました。',
+        error instanceof Error ? error.message : '支出を登録できませんでした。',
       );
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const onInvalidSubmit = (fieldErrors: FieldErrors<ExpenseFormValues>) => {
-    setFeedback(readErrorMessage(fieldErrors) ?? '入力を確認してください。');
   };
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+    <ThemedView type="backgroundElement" style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.safeArea}
         >
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">支出登録</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                room内の共通経費または個人間立替を登録します。
-              </ThemedText>
-            </ThemedView>
-
-            {feedback ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">登録状況</ThemedText>
+          <View style={styles.headerWrap}>
+            <AppHeader title="支出を入力" />
+          </View>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.container}>
+              <View style={styles.amountSection}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {feedback}
+                  金額
                 </ThemedText>
-              </ThemedView>
-            ) : null}
-
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }]}
-            >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">基本情報</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  必須
-                </ThemedText>
-              </View>
-
-              <Field label="支出タイプ" error={errors.expenseType?.message}>
-                <OptionRow>
-                  {expenseTypeOptions.map((option) => (
-                    <OptionButton
-                      key={option.value}
-                      isSelected={expenseType === option.value}
-                      label={option.label}
-                      onPress={() => selectExpenseType(option.value)}
-                    />
-                  ))}
-                </OptionRow>
-              </Field>
-
-              <Field label="金額" error={errors.amountText?.message}>
-                <Controller
-                  control={control}
-                  name="amountText"
-                  render={({ field: { onBlur, onChange, value } }) => (
-                    <TextInput
-                      inputMode="numeric"
-                      keyboardType="number-pad"
-                      onBlur={onBlur}
-                      placeholder="12000"
-                      placeholderTextColor={theme.textSecondary}
-                      style={[
-                        styles.input,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.background,
-                          color: theme.text,
-                        },
-                      ]}
-                      value={value}
-                      onChangeText={onChange}
-                    />
-                  )}
-                />
-              </Field>
-
-              <Field label="カテゴリ" error={errors.category?.message}>
-                <OptionRow>
-                  {categoryOptions.map((option) => (
-                    <OptionButton
-                      key={option}
-                      isSelected={category === option}
-                      label={option}
-                      onPress={() => setFormValue('category', option)}
-                    />
-                  ))}
-                </OptionRow>
-              </Field>
-
-              <Field label="内容" error={errors.description?.message}>
-                <Controller
-                  control={control}
-                  name="description"
-                  render={({ field: { onBlur, onChange, value } }) => (
-                    <TextInput
-                      multiline
-                      onBlur={onBlur}
-                      placeholder="ホテル代 2泊分"
-                      placeholderTextColor={theme.textSecondary}
-                      style={[
-                        styles.textArea,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.background,
-                          color: theme.text,
-                        },
-                      ]}
-                      value={value}
-                      onChangeText={onChange}
-                    />
-                  )}
-                />
-              </Field>
-
-              <Field label="支払日" error={errors.paidAt?.message}>
-                <Controller
-                  control={control}
-                  name="paidAt"
-                  render={({ field: { onBlur, onChange, value } }) => (
-                    <TextInput
-                      autoCapitalize="none"
-                      inputMode="numeric"
-                      onBlur={onBlur}
-                      placeholder="2026-06-01"
-                      placeholderTextColor={theme.textSecondary}
-                      style={[
-                        styles.input,
-                        {
-                          borderColor: theme.border,
-                          backgroundColor: theme.background,
-                          color: theme.text,
-                        },
-                      ]}
-                      value={value}
-                      onChangeText={onChange}
-                    />
-                  )}
-                />
-              </Field>
-            </ThemedView>
-
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }]}
-            >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">レシート</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  画像または理由
-                </ThemedText>
-              </View>
-
-              <Field
-                label="レシート画像"
-                error={errors.receiptImageUrl?.message}
-              >
-                <View style={styles.receiptActions}>
-                  <Pressable
-                    onPress={pickReceiptFromLibrary}
-                    style={({ pressed }) => [
-                      styles.secondaryButton,
-                      {
-                        backgroundColor: theme.primarySoft,
-                        borderColor: theme.primary,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="smallBold"
-                      style={{ color: theme.primary }}
-                    >
-                      画像を選択
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    onPress={takeReceiptPhoto}
-                    style={({ pressed }) => [
-                      styles.secondaryButton,
-                      {
-                        backgroundColor: theme.primarySoft,
-                        borderColor: theme.primary,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="smallBold"
-                      style={{ color: theme.primary }}
-                    >
-                      撮影する
-                    </ThemedText>
-                  </Pressable>
+                <View
+                  style={[
+                    styles.amountRow,
+                    { borderBottomColor: theme.border },
+                  ]}
+                >
+                  <ThemedText type="subtitle">¥</ThemedText>
+                  <TextInput
+                    inputMode="numeric"
+                    keyboardType="number-pad"
+                    onChangeText={setAmount}
+                    placeholder="0"
+                    placeholderTextColor={theme.border}
+                    style={[styles.amountInput, { color: theme.text }]}
+                    value={amount}
+                  />
                 </View>
-                {receiptImageUrl ? (
-                  <ThemedView
-                    type="backgroundElement"
-                    style={styles.receiptInfo}
+              </View>
+
+              <SurfaceCard
+                style={[
+                  styles.formCard,
+                  { backgroundColor: theme.overBackground },
+                ]}
+              >
+                <Field label="支出タイプ">
+                  <View
+                    style={[
+                      styles.segment,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
                   >
-                    <Image
-                      source={{ uri: receiptImageUrl }}
-                      style={styles.receiptPreview}
+                    <SegmentButton
+                      active={expenseType === 'common'}
+                      label="共通経費"
+                      onPress={() => setExpenseType('common')}
                     />
-                    <ThemedText type="smallBold">選択済み</ThemedText>
+                    <SegmentButton
+                      active={expenseType === 'personal'}
+                      label="個人間立替"
+                      onPress={() => setExpenseType('personal')}
+                    />
+                  </View>
+                </Field>
+                <Field label="カテゴリ">
+                  <View style={styles.chips}>
+                    {categories.map((item) => (
+                      <Chip
+                        active={category === item}
+                        key={item}
+                        label={item}
+                        onPress={() => setCategory(item)}
+                      />
+                    ))}
+                  </View>
+                </Field>
+                <Field label="内容">
+                  <TextInput
+                    onChangeText={setDescription}
+                    placeholder="例：食べ歩き"
+                    placeholderTextColor={theme.textDisabled}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        color: theme.text,
+                      },
+                    ]}
+                    value={description}
+                  />
+                </Field>
+                <Field label="支払日">
+                  <TextInput
+                    inputMode="numeric"
+                    onChangeText={setPaidAt}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={theme.textDisabled}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        color: theme.text,
+                      },
+                    ]}
+                    value={paidAt}
+                  />
+                </Field>
+              </SurfaceCard>
+
+              {expenseType === 'personal' ? (
+                <SurfaceCard
+                  style={[
+                    styles.formCard,
+                    { backgroundColor: theme.overBackground },
+                  ]}
+                >
+                  <Field label="割り方">
+                    <View
+                      style={[
+                        styles.segment,
+                        { backgroundColor: theme.backgroundElement },
+                      ]}
+                    >
+                      <SegmentButton
+                        active={splitType === 'equal'}
+                        label="均等"
+                        onPress={() => setSplitType('equal')}
+                      />
+                      <SegmentButton
+                        active={splitType === 'custom'}
+                        label="金額指定"
+                        onPress={() => setSplitType('custom')}
+                      />
+                    </View>
+                  </Field>
+                  <View style={styles.labelRow}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      {receiptImageUrl}
+                      対象者
                     </ThemedText>
                     <Pressable
-                      onPress={clearReceiptImage}
-                      style={({ pressed }) => [
-                        styles.clearReceiptButton,
-                        { borderColor: theme.danger },
-                        pressed && styles.pressed,
-                      ]}
+                      onPress={() =>
+                        setSelectedIds(members.map((member) => member.id))
+                      }
                     >
                       <ThemedText
                         type="smallBold"
-                        style={{ color: theme.danger }}
+                        style={{ color: theme.primary }}
                       >
-                        画像を削除
+                        全選択
                       </ThemedText>
                     </Pressable>
-                  </ThemedView>
-                ) : null}
-              </Field>
-
-              {!receiptImageUrl.trim() ? (
-                <>
-                  <Field
-                    label="レシートなし理由"
-                    error={errors.noReceiptReason?.message}
-                  >
-                    <OptionRow>
-                      {noReceiptReasons.map((reason) => (
-                        <OptionButton
-                          key={reason}
-                          isSelected={noReceiptReason === reason}
-                          label={reason}
-                          onPress={() =>
-                            setFormValue('noReceiptReason', reason)
-                          }
-                        />
-                      ))}
-                    </OptionRow>
-                  </Field>
-
-                  <Field label="補足メモ" error={errors.noReceiptNote?.message}>
-                    <Controller
-                      control={control}
-                      name="noReceiptNote"
-                      render={({ field: { onBlur, onChange, value } }) => (
-                        <TextInput
-                          multiline
-                          onBlur={onBlur}
-                          placeholder="交通費のため領収書がありません。"
-                          placeholderTextColor={theme.textSecondary}
-                          style={[
-                            styles.textArea,
-                            {
-                              borderColor: theme.border,
-                              backgroundColor: theme.background,
-                              color: theme.text,
-                            },
-                          ]}
-                          value={value}
-                          onChangeText={onChange}
-                        />
-                      )}
-                    />
-                  </Field>
-                </>
-              ) : null}
-            </ThemedView>
-
-            {expenseType === 'personal' ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.form, { borderColor: theme.border }]}
-              >
-                <View style={styles.sectionHeader}>
-                  <ThemedText type="smallBold">対象者</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    個人間立替
-                  </ThemedText>
-                </View>
-
-                <Field label="割り方" error={errors.splitType?.message}>
-                  <OptionRow>
-                    {splitTypeOptions.map((option) => (
-                      <OptionButton
-                        key={option.value}
-                        isSelected={splitType === option.value}
-                        label={option.label}
-                        onPress={() => selectSplitType(option.value)}
+                  </View>
+                  <View style={styles.chips}>
+                    {members.map((member) => (
+                      <Chip
+                        active={selectedIds.includes(member.id)}
+                        key={member.id}
+                        label={
+                          member.display_name || member.email.split('@')[0]
+                        }
+                        onPress={() => toggleMember(member.id)}
                       />
                     ))}
-                  </OptionRow>
-                </Field>
-
-                <Field label="対象者" error={errors.selectedMemberIds?.message}>
-                  {isLoadingMembers ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      参加者を読み込んでいます。
-                    </ThemedText>
-                  ) : members.length === 0 ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      このroomには対象者として選択できる参加者がありません。
-                    </ThemedText>
-                  ) : (
-                    <View style={styles.memberList}>
-                      {members.map((member) => {
-                        const isSelected = selectedMemberIds.includes(
-                          member.id,
-                        );
-
-                        return (
-                          <Pressable
-                            key={member.id}
-                            onPress={() => toggleMember(member.id)}
-                            style={({ pressed }) => [
-                              styles.memberRow,
+                  </View>
+                  {splitType === 'custom' && selectedMembers.length > 0 ? (
+                    <View style={styles.shareList}>
+                      {selectedMembers.map((member) => (
+                        <View key={member.id} style={styles.shareRow}>
+                          <ThemedText type="small">
+                            {member.display_name || member.email}
+                          </ThemedText>
+                          <TextInput
+                            inputMode="numeric"
+                            onChangeText={(value) =>
+                              setShares((current) => ({
+                                ...current,
+                                [member.id]: value,
+                              }))
+                            }
+                            placeholder="0"
+                            placeholderTextColor={theme.textDisabled}
+                            style={[
+                              styles.shareInput,
                               {
-                                backgroundColor: isSelected
-                                  ? theme.backgroundSelected
-                                  : theme.background,
-                                borderColor: theme.border,
+                                backgroundColor: theme.backgroundElement,
+                                color: theme.text,
                               },
-                              pressed && styles.pressed,
                             ]}
-                          >
-                            <View style={styles.memberMain}>
-                              <ThemedText type="smallBold">
-                                {member.display_name || member.email}
-                              </ThemedText>
-                              <ThemedText
-                                type="small"
-                                themeColor="textSecondary"
-                              >
-                                {member.email}
-                              </ThemedText>
-                            </View>
-                            <ThemedText type="smallBold">
-                              {isSelected ? '選択中' : '選択'}
-                            </ThemedText>
-                          </Pressable>
-                        );
-                      })}
+                            value={shares[member.id] ?? ''}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                </SurfaceCard>
+              ) : null}
+
+              <SurfaceCard
+                style={[
+                  styles.formCard,
+                  { backgroundColor: theme.overBackground },
+                ]}
+              >
+                <Field label="レシート">
+                  {receiptUri ? (
+                    <View style={styles.receiptPreviewWrap}>
+                      <Image
+                        source={{ uri: receiptUri }}
+                        style={styles.receiptPreview}
+                      />
+                      <Pressable
+                        onPress={() => {
+                          setReceiptUri('');
+                          setReceiptBase64('');
+                        }}
+                        style={[
+                          styles.removeReceipt,
+                          { backgroundColor: theme.danger },
+                        ]}
+                      >
+                        <ThemedText style={styles.removeText}>×</ThemedText>
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View
+                      style={[
+                        styles.receiptDrop,
+                        { borderColor: theme.textDisabled },
+                      ]}
+                    >
+                      <SymbolView
+                        name={{
+                          ios: 'camera.fill',
+                          android: 'photo_camera',
+                          web: 'photo_camera',
+                        }}
+                        size={32}
+                        tintColor={theme.textSecondary}
+                        fallback={
+                          <Text style={{ color: theme.textSecondary }}>▣</Text>
+                        }
+                      />
+                      <ThemedText type="small" themeColor="textSecondary">
+                        撮影または写真から選択
+                      </ThemedText>
+                      <View style={styles.receiptActions}>
+                        <SecondaryButton
+                          onPress={takePhoto}
+                          style={styles.receiptButton}
+                        >
+                          撮影
+                        </SecondaryButton>
+                        <SecondaryButton
+                          onPress={pickImage}
+                          style={styles.receiptButton}
+                        >
+                          写真を選ぶ
+                        </SecondaryButton>
+                      </View>
                     </View>
                   )}
                 </Field>
 
-                {splitType === 'custom' && selectedMemberIds.length > 0 ? (
-                  <Field
-                    label="対象者ごとの金額"
-                    error={readErrorMessage(errors.customShares)}
-                  >
-                    <View style={styles.memberList}>
-                      {members
-                        .filter((member) =>
-                          selectedMemberIds.includes(member.id),
-                        )
-                        .map((member) => (
-                          <View key={member.id} style={styles.shareRow}>
-                            <ThemedText
-                              type="smallBold"
-                              style={styles.shareLabel}
-                            >
-                              {member.display_name || member.email}
-                            </ThemedText>
-                            <TextInput
-                              inputMode="numeric"
-                              keyboardType="number-pad"
-                              placeholder={amountText ? amountText : '3000'}
-                              placeholderTextColor={theme.textSecondary}
-                              style={[
-                                styles.input,
-                                styles.shareInput,
-                                {
-                                  borderColor: theme.border,
-                                  backgroundColor: theme.background,
-                                  color: theme.text,
-                                },
-                              ]}
-                              value={customShares[member.id] ?? ''}
-                              onChangeText={(value) =>
-                                setFormValue('customShares', {
-                                  ...customShares,
-                                  [member.id]: value,
-                                })
-                              }
-                            />
-                          </View>
+                {!receiptUri ? (
+                  <>
+                    <Field label="レシートなし理由">
+                      <View style={styles.chips}>
+                        {noReceiptReasons.map((reason) => (
+                          <Chip
+                            active={noReceiptReason === reason}
+                            key={reason}
+                            label={reason}
+                            onPress={() => setNoReceiptReason(reason)}
+                          />
                         ))}
-                    </View>
-                  </Field>
+                      </View>
+                    </Field>
+                    <Field label="補足メモ">
+                      <TextInput
+                        multiline
+                        onChangeText={setNoReceiptNote}
+                        placeholder="レシートがない事情を入力してください"
+                        placeholderTextColor={theme.textDisabled}
+                        style={[
+                          styles.memo,
+                          {
+                            backgroundColor: theme.backgroundElement,
+                            color: theme.text,
+                          },
+                        ]}
+                        textAlignVertical="top"
+                        value={noReceiptNote}
+                      />
+                    </Field>
+                  </>
                 ) : null}
-              </ThemedView>
-            ) : null}
+              </SurfaceCard>
 
-            <View style={styles.actions}>
-              <Pressable
-                disabled={isSubmitDisabled}
-                onPress={() =>
-                  void handleSubmit(onValidSubmit, onInvalidSubmit)()
-                }
-                style={({ pressed }) => [
-                  styles.button,
-                  {
-                    backgroundColor: isSubmitDisabled
-                      ? theme.backgroundSelected
-                      : theme.primarySoft,
-                    borderColor: isSubmitDisabled
-                      ? theme.border
-                      : theme.primary,
-                  },
-                  pressed && !isSubmitDisabled && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="default"
-                  style={{
-                    fontWeight: 'bold',
-                    color: isSubmitDisabled
-                      ? theme.textSecondary
-                      : theme.primary,
-                  }}
-                >
-                  {isSubmitting ? '登録中...' : '支出を登録する'}
+              {feedback ? (
+                <ThemedText type="small" themeColor="danger">
+                  {feedback}
                 </ThemedText>
-              </Pressable>
-
-              <Pressable
-                onPress={() => router.back()}
-                style={({ pressed }) => [
-                  styles.ghostButton,
-                  { borderColor: theme.border },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="default"
-                  style={{ color: theme.textSecondary, fontWeight: 'bold' }}
-                >
-                  キャンセルして戻る
-                </ThemedText>
-              </Pressable>
+              ) : null}
+              <PrimaryButton disabled={submitting} onPress={submit}>
+                {submitting ? '登録中…' : '確認して登録 →'}
+              </PrimaryButton>
             </View>
-          </ThemedView>
-        </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
-      <BottomNav />
     </ThemedView>
   );
 }
 
 function Field({
   children,
-  error,
   label,
-  style,
 }: {
-  children: ReactNode;
-  error?: string;
+  children: React.ReactNode;
   label: string;
-  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <ThemedView style={[styles.field, style]}>
-      <ThemedText type="smallBold">{label}</ThemedText>
+    <View style={styles.field}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
       {children}
-      {error ? (
-        <ThemedText type="small" style={styles.errorText}>
-          {error}
-        </ThemedText>
-      ) : null}
-    </ThemedView>
+    </View>
   );
 }
-
-function OptionRow({ children }: { children: ReactNode }) {
-  return <View style={styles.optionRow}>{children}</View>;
-}
-
-function OptionButton({
-  isSelected,
+function SegmentButton({
+  active,
   label,
   onPress,
 }: {
-  isSelected: boolean;
+  active: boolean;
   label: string;
   onPress: () => void;
 }) {
   const theme = useTheme();
-
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.optionButton,
-        {
-          backgroundColor: isSelected ? theme.primarySoft : 'transparent',
-          borderColor: theme.primary,
-        },
-        pressed && styles.pressed,
+      style={[
+        styles.segmentButton,
+        active && { backgroundColor: theme.primary },
       ]}
     >
-      <ThemedText type="smallBold" style={{ color: theme.primary }}>
+      <ThemedText
+        type="smallBold"
+        style={{ color: active ? '#ffffff' : theme.textSecondary }}
+      >
         {label}
       </ThemedText>
     </Pressable>
   );
 }
-
-function parsePositiveInteger(value: string) {
-  const trimmedValue = value.trim();
-
-  if (!/^\d+$/.test(trimmedValue)) {
-    return null;
-  }
-
-  const parsedValue = Number.parseInt(trimmedValue, 10);
-  return parsedValue >= 1 ? parsedValue : null;
+function Chip({
+  active,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.chip,
+        {
+          backgroundColor: active ? theme.primarySoft : theme.backgroundElement,
+          borderColor: active ? theme.primary : theme.border,
+        },
+      ]}
+    >
+      <ThemedText
+        type="small"
+        style={{ color: active ? theme.primary : theme.textSecondary }}
+      >
+        {active ? '✓ ' : ''}
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
 }
-
-function readErrorMessage(error: unknown): string | undefined {
-  if (!error || typeof error !== 'object') {
-    return undefined;
-  }
-
-  if ('message' in error && typeof error.message === 'string') {
-    return error.message;
-  }
-
-  return Object.values(error as FieldValues)
-    .map(readErrorMessage)
-    .find((message) => message);
+function today() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  amountInput: {
     flex: 1,
+    padding: 0,
+    fontFamily: Fonts.sans,
+    fontSize: 48,
+    lineHeight: 58,
+    textAlign: 'center',
   },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
-  },
-  container: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  header: {
-    gap: Spacing.two,
-  },
-  alert: {
-    gap: Spacing.one,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  form: {
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  sectionHeader: {
+  amountRow: {
+    width: 190,
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+    borderBottomWidth: 1,
   },
-  field: {
-    gap: Spacing.one,
-  },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    fontSize: 16,
-  },
-  textArea: {
-    minHeight: 96,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-  optionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  optionButton: {
-    minHeight: 44,
+  amountSection: { alignItems: 'center', gap: 4 },
+  chip: {
+    minHeight: 38,
+    alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    borderRadius: Radius.pill,
+    paddingHorizontal: 14,
+  },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  container: { width: '100%', maxWidth: MaxContentWidth, gap: 24 },
+  content: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 34,
+  },
+  field: { gap: 8 },
+  formCard: { gap: 18, padding: 16 },
+  headerWrap: {
+    width: '100%',
+    maxWidth: MaxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: 18,
+  },
+  input: {
+    minHeight: 50,
     borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: 14,
+    fontFamily: Fonts.sans,
+    fontSize: 16,
   },
-  errorText: {
-    color: '#e01e5a',
-  },
-  memberList: {
-    gap: Spacing.two,
-  },
-  receiptActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  receiptInfo: {
-    gap: Spacing.one,
+  labelRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  memo: {
+    minHeight: 92,
     borderRadius: Radius.control,
-    padding: Spacing.two,
+    padding: 14,
+    fontFamily: Fonts.sans,
+    fontSize: 16,
+  },
+  receiptActions: { flexDirection: 'row', gap: 10 },
+  receiptButton: { minHeight: 42, paddingHorizontal: 16 },
+  receiptDrop: {
+    minHeight: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: Radius.control,
   },
   receiptPreview: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: Radius.control,
   },
-  clearReceiptButton: {
-    minHeight: 40,
+  receiptPreviewWrap: { position: 'relative' },
+  removeReceipt: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.three,
+    borderRadius: 16,
   },
-  memberRow: {
+  removeText: { color: '#ffffff', fontSize: 22 },
+  safeArea: { flex: 1 },
+  screen: { flex: 1 },
+  segment: { flexDirection: 'row', borderRadius: Radius.control, padding: 4 },
+  segmentButton: {
+    flex: 1,
+    minHeight: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 7,
+  },
+  shareInput: {
+    width: 100,
+    minHeight: 42,
+    borderRadius: Radius.control,
+    paddingHorizontal: 10,
+    fontFamily: Fonts.sans,
+    textAlign: 'right',
+  },
+  shareList: { gap: 8 },
+  shareRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.two,
-  },
-  memberMain: {
-    flex: 1,
-    gap: 2,
-  },
-  shareRow: {
-    gap: Spacing.one,
-  },
-  shareLabel: {
-    flex: 1,
-  },
-  shareInput: {
-    width: '100%',
-  },
-  actions: {
-    gap: Spacing.two,
-  },
-  button: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  secondaryButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.three,
-  },
-  ghostButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-  },
-  pressed: {
-    opacity: 0.72,
+    gap: 12,
   },
 });

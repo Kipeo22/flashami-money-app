@@ -78,15 +78,15 @@ export function validateRoomInput(input: CreateRoomInput) {
     return 'room名を入力してください。';
   }
 
-  if (!isValidIsoDate(input.startDate)) {
+  if (input.startDate && !isValidIsoDate(input.startDate)) {
     return '開始日は YYYY-MM-DD 形式で入力してください。';
   }
 
-  if (!isValidIsoDate(input.endDate)) {
+  if (input.endDate && !isValidIsoDate(input.endDate)) {
     return '終了日は YYYY-MM-DD 形式で入力してください。';
   }
 
-  if (input.startDate > input.endDate) {
+  if (input.startDate && input.endDate && input.startDate > input.endDate) {
     return '終了日は開始日以降にしてください。';
   }
 
@@ -155,8 +155,8 @@ export async function createRoomWithMembers(input: CreateRoomInput) {
     .insert({
       name: input.name.trim(),
       description: input.description.trim() || null,
-      start_date: input.startDate,
-      end_date: input.endDate,
+      start_date: input.startDate || null,
+      end_date: input.endDate || null,
       created_by: user.id,
     })
     .select('id, name, description, start_date, end_date')
@@ -257,6 +257,30 @@ export async function requireCurrentUserRoomAdmin(roomId: string) {
   }
 
   return membership;
+}
+
+export async function inviteRoomMember(roomId: string, email: string) {
+  await requireCurrentUserRoomAdmin(roomId);
+  const normalizedEmail = normalizeEmail(email);
+  if (!isValidEmail(normalizedEmail)) {
+    throw new Error('正しいメールアドレスを入力してください。');
+  }
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.from('room_members').insert({
+    room_id: roomId,
+    email: normalizedEmail,
+    user_id: null,
+    display_name: null,
+    role: 'member',
+    status: 'invited',
+  });
+
+  if (error) {
+    throw new Error(formatSupabaseError(error));
+  }
+
+  return fetchRoomMembers(roomId);
 }
 
 export async function fetchCurrentUserRooms() {

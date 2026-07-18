@@ -1,412 +1,307 @@
-import { Link, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomNav } from '@/components/bottom-nav';
+import {
+  AppHeader,
+  Badge,
+  PrimaryButton,
+  SurfaceCard,
+} from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
-  fetchRoomById,
   fetchRoomMembers,
+  inviteRoomMember,
   type RoomMemberRecord,
-  type RoomRecord,
 } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
-export default function RoomMembersScreen() {
-  const { roomId } = useLocalSearchParams<{ roomId?: string }>();
+export default function MembersScreen() {
+  const params = useLocalSearchParams<{ roomId?: string }>();
+  const roomId = Array.isArray(params.roomId) ? undefined : params.roomId;
   const theme = useTheme();
-  const [room, setRoom] = useState<RoomRecord | null>(null);
+  const inputRef = useRef<TextInput>(null);
   const [members, setMembers] = useState<RoomMemberRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(
+    Boolean(roomId && isSupabaseConfigured),
+  );
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-
-    async function load() {
-      if (!roomId || Array.isArray(roomId)) {
-        setError('roomId が指定されていません。');
-        setIsLoading(false);
-        return;
-      }
-
-      if (!isSupabaseConfigured) {
-        setError('メンバー一覧を表示できませんでした。');
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const [roomData, memberData] = await Promise.all([
-          fetchRoomById(roomId),
-          fetchRoomMembers(roomId),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setRoom(roomData);
-        setMembers(memberData);
-      } catch (caughtError) {
-        if (!active) {
-          return;
-        }
-
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : 'room情報の取得に失敗しました。',
-        );
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
+    if (!roomId || !isSupabaseConfigured) {
+      return;
     }
-
-    load();
-
+    fetchRoomMembers(roomId)
+      .then((data) => active && setMembers(data))
+      .catch(
+        (error) =>
+          active &&
+          setFeedback(
+            error instanceof Error
+              ? error.message
+              : '参加者を取得できませんでした。',
+          ),
+      )
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [roomId]);
 
+  const sendInvite = async () => {
+    if (!roomId) return;
+    setSending(true);
+    setFeedback(null);
+    try {
+      const data = await inviteRoomMember(roomId, email);
+      setMembers(data);
+      setEmail('');
+      setFeedback('参加者を招待しました。');
+    } catch (error) {
+      setFeedback(
+        error instanceof Error ? error.message : '招待を送信できませんでした。',
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
+    <ThemedView type="backgroundElement" style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.headerWrap}>
+          <AppHeader
+            action={
+              <Pressable
+                onPress={() => inputRef.current?.focus()}
+                style={[
+                  styles.addButton,
+                  { backgroundColor: theme.primarySoft },
+                ]}
+              >
+                <ThemedText type="smallBold" style={{ color: theme.primary }}>
+                  ＋追加
+                </ThemedText>
+              </Pressable>
+            }
+            title="参加者管理"
+          />
+        </View>
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
         >
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">メンバー</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                roomに登録されたメンバーのメールアドレス、権限、参加状態を表示します。
-              </ThemedText>
-            </ThemedView>
-
-            <View style={styles.actions}>
-              <Link href="/rooms" asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.primary },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    room一覧へ
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              <Link href={'/rooms/new' as any} asChild>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.secondaryButton,
-                    { borderColor: theme.primary },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    roomを作成する
-                  </ThemedText>
-                </Pressable>
-              </Link>
-              {roomId && !Array.isArray(roomId) ? (
-                <>
-                  <Link href={`/rooms/${roomId}` as any} asChild>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.button,
-                        {
-                          backgroundColor: theme.primarySoft,
-                          borderColor: theme.primary,
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <ThemedText
-                        type="smallBold"
-                        style={{ color: theme.primary }}
-                      >
-                        支出一覧を見る
-                      </ThemedText>
-                    </Pressable>
-                  </Link>
-                  <Link href={`/rooms/${roomId}/expenses/new` as any} asChild>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.secondaryButton,
-                        { borderColor: theme.primary },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <ThemedText
-                        type="smallBold"
-                        style={{ color: theme.primary }}
-                      >
-                        支出を登録する
-                      </ThemedText>
-                    </Pressable>
-                  </Link>
-                </>
+          <View style={styles.container}>
+            <SurfaceCard style={styles.memberCard}>
+              {loading ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  参加者を読み込んでいます。
+                </ThemedText>
               ) : null}
-            </View>
-
-            {isLoading ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
-              >
-                <ThemedText type="smallBold">読み込み中</ThemedText>
+              {!loading && members.length === 0 ? (
                 <ThemedText type="small" themeColor="textSecondary">
-                  roomの詳細とメンバーを取得しています。
+                  参加者はまだいません。
                 </ThemedText>
-              </ThemedView>
-            ) : null}
-
-            {error ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
-              >
-                <ThemedText type="smallBold">取得に失敗しました</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {error}
-                </ThemedText>
-              </ThemedView>
-            ) : null}
-
-            {room ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
-              >
-                <ThemedText type="smallBold">{room.name}</ThemedText>
-                <ThemedText themeColor="textSecondary">
-                  {room.description || '説明はまだ登録されていません。'}
-                </ThemedText>
-                <View style={styles.metaRow}>
-                  <Meta label="開始日" value={room.start_date ?? '-'} />
-                  <Meta label="終了日" value={room.end_date ?? '-'} />
-                </View>
-              </ThemedView>
-            ) : null}
-
-            {!isLoading && !error ? (
-              <ThemedView
-                type="backgroundElement"
-                style={[styles.card, { borderColor: theme.border }]}
-              >
-                <View style={styles.sectionHeader}>
-                  <ThemedText type="smallBold">メンバー</ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {members.length}名
-                  </ThemedText>
-                </View>
-
-                {members.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    メンバーはまだ登録されていません。
-                  </ThemedText>
-                ) : (
-                  <View style={styles.memberList}>
-                    {members.map((member) => (
-                      <View
-                        key={member.id}
-                        style={[
-                          styles.memberRow,
-                          {
-                            backgroundColor: theme.background,
-                            borderColor: theme.border,
-                          },
-                        ]}
-                      >
-                        <View style={styles.memberMain}>
-                          <ThemedText type="smallBold">
-                            {member.display_name || member.email}
-                          </ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {member.email}
-                          </ThemedText>
-                        </View>
-                        <View style={styles.badges}>
-                          <Badge
-                            backgroundColor={
-                              member.role === 'admin'
-                                ? theme.primarySoft
-                                : theme.backgroundSelected
-                            }
-                            label={formatMemberRole(member.role)}
-                            textColor={
-                              member.role === 'admin'
-                                ? theme.primary
-                                : theme.textSecondary
-                            }
-                          />
-                          <Badge
-                            backgroundColor={theme.backgroundSelected}
-                            label={formatMemberStatus(member.status)}
-                            textColor={theme.textSecondary}
-                          />
-                        </View>
-                      </View>
-                    ))}
+              ) : null}
+              {members.map((member, index) => (
+                <View
+                  key={member.id}
+                  style={[
+                    styles.memberRow,
+                    index < members.length - 1 && {
+                      borderBottomColor: theme.border,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: avatarColor(index) },
+                    ]}
+                  >
+                    <ThemedText type="default" style={styles.avatarText}>
+                      {initial(member)}
+                    </ThemedText>
                   </View>
-                )}
-              </ThemedView>
-            ) : null}
-          </ThemedView>
+                  <View style={styles.memberMain}>
+                    <View style={styles.nameRow}>
+                      <ThemedText type="default" style={styles.memberName}>
+                        {member.display_name || member.email.split('@')[0]}
+                      </ThemedText>
+                      <Badge
+                        label={
+                          member.role === 'admin'
+                            ? '運営者'
+                            : member.status === 'invited'
+                              ? '招待中'
+                              : '参加者'
+                        }
+                        tone={member.role === 'admin' ? 'primary' : 'neutral'}
+                      />
+                    </View>
+                    <ThemedText
+                      type="small"
+                      themeColor="textSecondary"
+                      numberOfLines={1}
+                    >
+                      {member.email}
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    accessibilityLabel="参加者メニュー"
+                    hitSlop={8}
+                    style={({ pressed }) => pressed && styles.pressed}
+                  >
+                    <SymbolView
+                      name={{
+                        ios: 'ellipsis',
+                        android: 'more_vert',
+                        web: 'more_vert',
+                      }}
+                      size={20}
+                      tintColor={theme.textSecondary}
+                      fallback={
+                        <Text style={{ color: theme.textSecondary }}>⋮</Text>
+                      }
+                    />
+                  </Pressable>
+                </View>
+              ))}
+            </SurfaceCard>
+
+            <SurfaceCard style={styles.inviteCard}>
+              <View style={styles.inviteTitle}>
+                <SymbolView
+                  name={{ ios: 'envelope.fill', android: 'mail', web: 'mail' }}
+                  size={21}
+                  tintColor={theme.primary}
+                  fallback={<Text style={{ color: theme.primary }}>✉</Text>}
+                />
+                <ThemedText type="default" style={styles.memberName}>
+                  新しい参加者を招待
+                </ThemedText>
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                メールアドレスを入力して、このroomへの招待を登録します。
+              </ThemedText>
+              <View style={[styles.inputShell, { backgroundColor: '#f3f4ff' }]}>
+                <ThemedText style={{ color: theme.textDisabled, fontSize: 25 }}>
+                  @
+                </ThemedText>
+                <TextInput
+                  ref={inputRef}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  onChangeText={setEmail}
+                  placeholder="email@example.com"
+                  placeholderTextColor={theme.textDisabled}
+                  style={[styles.input, { color: theme.text }]}
+                  value={email}
+                />
+              </View>
+              <PrimaryButton
+                disabled={!email.trim() || sending}
+                onPress={sendInvite}
+              >
+                {sending ? '送信中…' : '▷  招待を送信'}
+              </PrimaryButton>
+              {feedback ? (
+                <ThemedText
+                  type="small"
+                  themeColor={
+                    feedback.includes('招待しました')
+                      ? 'textSecondary'
+                      : 'danger'
+                  }
+                >
+                  {feedback}
+                </ThemedText>
+              ) : null}
+            </SurfaceCard>
+          </View>
         </ScrollView>
       </SafeAreaView>
-      <BottomNav />
     </ThemedView>
   );
 }
 
-function formatMemberRole(role: RoomMemberRecord['role']) {
-  return role === 'admin' ? '管理権限' : 'メンバー';
+function initial(member: RoomMemberRecord) {
+  return (member.display_name || member.email).slice(0, 1).toUpperCase();
 }
-
-function formatMemberStatus(status: RoomMemberRecord['status']) {
-  return status === 'joined' ? '参加中' : '招待中';
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.metaItem}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
-    </View>
-  );
-}
-
-function Badge({
-  backgroundColor,
-  label,
-  textColor,
-}: {
-  backgroundColor: string;
-  label: string;
-  textColor: string;
-}) {
-  return (
-    <View style={[styles.badge, { backgroundColor }]}>
-      <ThemedText type="small" style={[styles.badgeText, { color: textColor }]}>
-        {label}
-      </ThemedText>
-    </View>
-  );
+function avatarColor(index: number) {
+  return ['#dce8ff', '#fde0d2', '#e9e7e3'][index % 3];
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
+  addButton: {
+    minHeight: 38,
     alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
+    justifyContent: 'center',
+    borderRadius: 19,
+    paddingHorizontal: 14,
   },
-  container: {
+  avatar: {
+    width: 48,
+    height: 48,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+  },
+  avatarText: { fontSize: 20 },
+  container: { width: '100%', maxWidth: MaxContentWidth, gap: 30 },
+  content: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 30,
+  },
+  headerWrap: {
     width: '100%',
     maxWidth: MaxContentWidth,
-    gap: Spacing.four,
+    alignSelf: 'center',
+    paddingHorizontal: 18,
   },
-  header: {
-    gap: Spacing.two,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  button: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  secondaryButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-  card: {
-    gap: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.three,
-  },
-  metaItem: {
-    minWidth: 120,
-    flex: 1,
-    gap: Spacing.one,
-  },
-  sectionHeader: {
+  input: { flex: 1, minHeight: 50, fontFamily: Fonts.sans, fontSize: 16 },
+  inputShell: {
+    minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: 10,
+    borderRadius: Radius.control,
+    paddingHorizontal: 14,
   },
-  memberList: {
-    gap: Spacing.two,
-  },
+  inviteCard: { gap: 14, padding: 22 },
+  inviteTitle: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  memberCard: { padding: 0, overflow: 'hidden' },
+  memberMain: { flex: 1, minWidth: 0, gap: 2 },
+  memberName: { fontWeight: '700' },
   memberRow: {
-    gap: Spacing.two,
-    borderRadius: Radius.control,
-    padding: Spacing.two,
-    borderWidth: 1,
-  },
-  memberMain: {
-    gap: 2,
-  },
-  badges: {
+    minHeight: 80,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.one,
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 16,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-  },
-  badgeText: {
-    fontWeight: '700',
-  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pressed: { opacity: 0.55 },
+  safeArea: { flex: 1 },
+  screen: { flex: 1 },
 });

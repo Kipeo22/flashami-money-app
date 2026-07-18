@@ -1,377 +1,219 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState, type ReactNode } from 'react';
+import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
-  type StyleProp,
-  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BottomNav } from '@/components/bottom-nav';
+import { AppHeader, PrimaryButton, SurfaceCard } from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import {
-  createRoomWithMembers,
-  dedupeMemberEmails,
-  isValidEmail,
-  isValidIsoDate,
-  normalizeEmail,
-} from '@/lib/rooms';
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
+import { createRoomWithMembers } from '@/lib/rooms';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
-export default function RoomCreateScreen() {
+export default function CreateRoomScreen() {
   const router = useRouter();
   const theme = useTheme();
-
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [emailInput, setEmailInput] = useState('');
-  const [memberEmails, setMemberEmails] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [integrationOpen, setIntegrationOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const canCreateRoom =
-    name.trim().length > 0 &&
-    startDate.trim().length > 0 &&
-    endDate.trim().length > 0 &&
-    !isSubmitting;
 
-  useEffect(() => {
-    let active = true;
-
-    async function requireLogin() {
-      if (!isSupabaseConfigured) {
-        router.replace('/login');
-        return;
-      }
-
-      const supabase = getSupabaseClient();
-      const { data } = await supabase.auth.getUser();
-
-      if (active && !data.user) {
-        router.replace('/login');
-      }
-    }
-
-    requireLogin();
-
-    return () => {
-      active = false;
-    };
-  }, [router]);
-
-  const addEmail = () => {
-    const nextEmail = normalizeEmail(emailInput);
-
-    if (!nextEmail) {
+  const submit = async () => {
+    if (!isSupabaseConfigured) {
+      router.replace('/login');
       return;
     }
-
-    if (!isValidEmail(nextEmail)) {
-      setFeedback('参加者メールアドレスの形式が正しくありません。');
-      return;
-    }
-
-    setMemberEmails((current) =>
-      dedupeMemberEmails([...current, nextEmail], ''),
-    );
-    setEmailInput('');
+    setSubmitting(true);
     setFeedback(null);
-  };
-
-  const removeEmail = (emailToRemove: string) => {
-    setMemberEmails((current) =>
-      current.filter((email) => email !== emailToRemove),
-    );
-  };
-
-  const handleSubmit = async () => {
-    const pendingEmail = normalizeEmail(emailInput);
-    const nextMemberEmails =
-      pendingEmail && isValidEmail(pendingEmail)
-        ? dedupeMemberEmails([...memberEmails, pendingEmail], '')
-        : memberEmails;
-
-    if (pendingEmail && !isValidEmail(pendingEmail)) {
-      setFeedback('追加前の参加者メールアドレスを確認してください。');
-      return;
-    }
-
-    if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) {
-      setFeedback('開始日と終了日は YYYY-MM-DD 形式で入力してください。');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setFeedback(null);
-
     try {
       const room = await createRoomWithMembers({
-        name,
         description,
-        startDate,
         endDate,
-        memberEmails: nextMemberEmails,
+        memberEmails: [],
+        name,
+        startDate,
       });
-
-      router.replace(`/rooms/${room.id}/members` as any);
+      router.replace(`/rooms/${room.id}` as never);
     } catch (error) {
       setFeedback(
-        error instanceof Error ? error.message : 'roomの作成に失敗しました。',
+        error instanceof Error ? error.message : 'roomを作成できませんでした。',
       );
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+    <ThemedView type="backgroundElement" style={styles.screen}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.safeArea}
         >
-          <ThemedView style={styles.container}>
-            <ThemedView style={styles.header}>
-              <ThemedText type="subtitle">room作成</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                room名、開催日、参加者のメールアドレスをまとめて登録します。
-              </ThemedText>
-            </ThemedView>
-
-            {feedback ? (
-              <ThemedView type="backgroundElement" style={styles.alert}>
-                <ThemedText type="smallBold">入力を確認してください</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {feedback}
-                </ThemedText>
-              </ThemedView>
-            ) : null}
-
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }]}
+          <View style={styles.container}>
+            <AppHeader title="新しいroomを作成" />
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.content}
+              keyboardShouldPersistTaps="handled"
             >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">基本情報</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  必須
-                </ThemedText>
-              </View>
-
-              <Field label="room名">
+              <Field
+                label="room名"
+                hint="旅行やイベントの名前を入力してください。"
+              >
                 <TextInput
-                  autoCapitalize="words"
-                  placeholder="沖縄旅行 2026"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={setName}
+                  placeholder="例：卒業旅行2026"
+                  placeholderTextColor={theme.textDisabled}
                   style={[
                     styles.input,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: theme.background,
-                      color: theme.text,
-                    },
+                    { borderColor: theme.border, color: theme.text },
                   ]}
                   value={name}
-                  onChangeText={setName}
                 />
               </Field>
 
-              <Field label="説明">
+              <Field label="説明（任意）">
                 <TextInput
                   multiline
-                  placeholder="旅行の精算をまとめるroom"
-                  placeholderTextColor={theme.textSecondary}
+                  onChangeText={setDescription}
+                  placeholder="イベントの概要や目的など"
+                  placeholderTextColor={theme.textDisabled}
                   style={[
                     styles.textArea,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: theme.background,
-                      color: theme.text,
-                    },
+                    { borderColor: theme.border, color: theme.text },
                   ]}
+                  textAlignVertical="top"
                   value={description}
-                  onChangeText={setDescription}
                 />
               </Field>
 
-              <View style={styles.row}>
-                <Field label="開始日" style={styles.rowItem}>
-                  <TextInput
-                    autoCapitalize="none"
-                    inputMode="numeric"
-                    placeholder="2026-06-01"
-                    placeholderTextColor={theme.textSecondary}
-                    style={[
-                      styles.input,
-                      {
-                        borderColor: theme.border,
-                        backgroundColor: theme.background,
-                        color: theme.text,
-                      },
-                    ]}
+              <Field label="期間" hint="日程が未定の場合は空欄でも構いません。">
+                <View
+                  style={[
+                    styles.dateShell,
+                    { backgroundColor: theme.overBackground },
+                  ]}
+                >
+                  <DateInput
                     value={startDate}
                     onChangeText={setStartDate}
+                    placeholder="yyyy-mm-dd"
                   />
-                </Field>
-                <Field label="終了日" style={styles.rowItem}>
-                  <TextInput
-                    autoCapitalize="none"
-                    inputMode="numeric"
-                    placeholder="2026-06-05"
-                    placeholderTextColor={theme.textSecondary}
-                    style={[
-                      styles.input,
-                      {
-                        borderColor: theme.border,
-                        backgroundColor: theme.background,
-                        color: theme.text,
-                      },
-                    ]}
+                  <SymbolView
+                    name={{
+                      ios: 'arrow.right',
+                      android: 'arrow_forward',
+                      web: 'arrow_forward',
+                    }}
+                    size={18}
+                    tintColor={theme.textSecondary}
+                    fallback={
+                      <Text style={{ color: theme.textSecondary }}>→</Text>
+                    }
+                  />
+                  <DateInput
                     value={endDate}
                     onChangeText={setEndDate}
+                    placeholder="yyyy-mm-dd"
                   />
-                </Field>
-              </View>
-            </ThemedView>
-
-            <ThemedView
-              type="backgroundElement"
-              style={[styles.form, { borderColor: theme.border }]}
-            >
-              <View style={styles.sectionHeader}>
-                <ThemedText type="smallBold">参加者メールアドレス</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  任意
-                </ThemedText>
-              </View>
-
-              <View style={styles.emailComposer}>
-                <TextInput
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  onSubmitEditing={addEmail}
-                  placeholder="member@example.com"
-                  placeholderTextColor={theme.textSecondary}
-                  style={[
-                    styles.input,
-                    styles.emailInput,
-                    {
-                      borderColor: theme.border,
-                      backgroundColor: theme.background,
-                      color: theme.text,
-                    },
-                  ]}
-                  value={emailInput}
-                  onChangeText={setEmailInput}
-                />
-                <Pressable
-                  onPress={addEmail}
-                  style={({ pressed }) => [
-                    styles.smallButton,
-                    {
-                      backgroundColor: theme.primarySoft,
-                      borderColor: theme.primary,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <ThemedText type="smallBold" style={{ color: theme.primary }}>
-                    追加
-                  </ThemedText>
-                </Pressable>
-              </View>
-
-              <View style={styles.chips}>
-                {memberEmails.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    まだ参加者は追加されていません。
-                  </ThemedText>
-                ) : (
-                  memberEmails.map((email) => (
-                    <View
-                      key={email}
-                      style={[
-                        styles.chip,
-                        { backgroundColor: theme.backgroundSelected },
-                      ]}
-                    >
-                      <ThemedText type="small" style={styles.chipText}>
-                        {email}
-                      </ThemedText>
-                      <Pressable
-                        onPress={() => removeEmail(email)}
-                        style={({ pressed }) => [
-                          styles.chipRemove,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <ThemedText
-                          type="smallBold"
-                          style={{ color: theme.primary }}
-                        >
-                          削除
-                        </ThemedText>
-                      </Pressable>
-                    </View>
-                  ))
-                )}
-              </View>
-            </ThemedView>
-
-            <View style={styles.actions}>
-              <Pressable
-                disabled={!canCreateRoom}
-                onPress={handleSubmit}
-                style={({ pressed }) => [
-                  styles.button,
-                  {
-                    backgroundColor: !canCreateRoom
-                      ? theme.backgroundSelected
-                      : theme.primarySoft,
-                    borderColor: !canCreateRoom ? theme.border : theme.primary,
-                  },
-                  pressed && canCreateRoom && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="default"
-                  style={{
-                    fontWeight: 'bold',
-                    color: !canCreateRoom ? theme.textSecondary : theme.primary,
-                  }}
-                >
-                  {isSubmitting ? '作成中...' : 'この内容でRoomを作成する'}
-                </ThemedText>
-              </Pressable>
+                </View>
+              </Field>
 
               <Pressable
-                onPress={() => router.back()}
+                onPress={() => setIntegrationOpen((value) => !value)}
                 style={({ pressed }) => [
-                  styles.ghostButton,
-                  { borderColor: theme.border },
+                  styles.integrationPressable,
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText
-                  type="default"
-                  style={{ color: theme.textSecondary, fontWeight: 'bold' }}
+                <SurfaceCard
+                  style={[styles.integration, { backgroundColor: '#f3f4ff' }]}
                 >
-                  キャンセルして戻る
-                </ThemedText>
+                  <View style={styles.integrationRow}>
+                    <View
+                      style={[
+                        styles.integrationIcon,
+                        { backgroundColor: theme.primarySoft },
+                      ]}
+                    >
+                      <SymbolView
+                        name={{ ios: 'link', android: 'link', web: 'link' }}
+                        size={18}
+                        tintColor={theme.primary}
+                        fallback={
+                          <Text style={{ color: theme.primary }}>⌁</Text>
+                        }
+                      />
+                    </View>
+                    <View style={styles.integrationText}>
+                      <ThemedText type="smallBold">外部連携</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary">
+                        Discord, Google Spreadsheet（任意）
+                      </ThemedText>
+                    </View>
+                    <SymbolView
+                      name={{
+                        ios: integrationOpen ? 'chevron.up' : 'chevron.down',
+                        android: integrationOpen
+                          ? 'expand_less'
+                          : 'expand_more',
+                        web: integrationOpen ? 'expand_less' : 'expand_more',
+                      }}
+                      size={18}
+                      tintColor={theme.textSecondary}
+                      fallback={
+                        <Text style={{ color: theme.textSecondary }}>⌄</Text>
+                      }
+                    />
+                  </View>
+                  {integrationOpen ? (
+                    <ThemedText
+                      type="small"
+                      themeColor="textSecondary"
+                      style={styles.integrationNote}
+                    >
+                      room作成後、設定画面から連携先を登録できます。
+                    </ThemedText>
+                  ) : null}
+                </SurfaceCard>
               </Pressable>
+
+              {feedback ? (
+                <ThemedText type="small" themeColor="danger">
+                  {feedback}
+                </ThemedText>
+              ) : null}
+            </ScrollView>
+            <View
+              style={[
+                styles.footer,
+                { backgroundColor: theme.backgroundElement },
+              ]}
+            >
+              <PrimaryButton
+                disabled={!name.trim() || submitting}
+                onPress={submit}
+              >
+                {submitting ? '作成中…' : 'roomを作成 →'}
+              </PrimaryButton>
             </View>
-          </ThemedView>
-        </ScrollView>
-        <BottomNav />
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -379,150 +221,137 @@ export default function RoomCreateScreen() {
 
 function Field({
   children,
+  hint,
   label,
-  style,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
+  hint?: string;
   label: string;
-  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <ThemedView style={[styles.field, style]}>
+    <View style={styles.field}>
       <ThemedText type="smallBold">{label}</ThemedText>
       {children}
-    </ThemedView>
+      {hint ? (
+        <ThemedText type="small" themeColor="textSecondary" style={styles.hint}>
+          {hint}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+}
+
+function DateInput({
+  onChangeText,
+  placeholder,
+  value,
+}: {
+  onChangeText: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.dateInputWrap}>
+      <SymbolView
+        name={{
+          ios: 'calendar',
+          android: 'calendar_today',
+          web: 'calendar_today',
+        }}
+        size={17}
+        tintColor={theme.textSecondary}
+        fallback={<Text style={{ color: theme.textSecondary }}>□</Text>}
+      />
+      <TextInput
+        inputMode="numeric"
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textDisabled}
+        style={[styles.dateInput, { color: theme.text }]}
+        value={value}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    width: '100%',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.four,
-    paddingBottom: Spacing.four,
-  },
   container: {
+    flex: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
-    gap: Spacing.four,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    position: 'relative',
   },
-  header: {
-    gap: Spacing.two,
-  },
-  alert: {
-    gap: Spacing.one,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  form: {
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    padding: Spacing.three,
-  },
-  sectionHeader: {
+  content: { gap: 30, paddingTop: 14, paddingBottom: 112 },
+  dateInput: { flex: 1, minWidth: 0, fontFamily: Fonts.sans, fontSize: 15 },
+  dateInputWrap: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: 8,
   },
-  field: {
-    gap: Spacing.one,
-  },
-  row: {
+  dateShell: {
+    minHeight: 58,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: Radius.control,
+    paddingHorizontal: 14,
   },
-  rowItem: {
-    minWidth: 140,
-    flex: 1,
+  field: { gap: 9 },
+  footer: {
+    position: 'absolute',
+    right: 20,
+    bottom: 0,
+    left: 20,
+    zIndex: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
+  hint: { fontSize: 12, lineHeight: 18 },
   input: {
-    minHeight: 48,
+    minHeight: 50,
     borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
+    borderRadius: 0,
+    paddingHorizontal: 12,
+    fontFamily: Fonts.sans,
     fontSize: 16,
   },
+  integration: {
+    width: '100%',
+    minHeight: 72,
+    gap: 10,
+    padding: 14,
+  },
+  integrationPressable: { width: '100%' },
+  integrationRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  integrationIcon: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+  },
+  integrationNote: { marginTop: 8 },
+  integrationText: { flex: 1 },
+  pressed: { opacity: 0.6 },
+  safeArea: { flex: 1 },
+  scrollView: { flex: 1, width: '100%' },
+  screen: { flex: 1 },
   textArea: {
-    minHeight: 96,
-    borderWidth: 1,
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    minHeight: 104,
+    borderWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontFamily: Fonts.sans,
     fontSize: 16,
-    textAlignVertical: 'top',
-  },
-  emailComposer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  emailInput: {
-    minWidth: 220,
-    flex: 1,
-  },
-  chips: {
-    gap: Spacing.two,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    backgroundColor: '#e5e7eb',
-  },
-  chipText: {
-    flex: 1,
-  },
-  chipRemove: {
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  actions: {
-    gap: Spacing.two,
-  },
-  button: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.four,
-  },
-  smallButton: {
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.three,
-  },
-  ghostButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.control,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-  },
-  pressed: {
-    opacity: 0.72,
   },
 });
