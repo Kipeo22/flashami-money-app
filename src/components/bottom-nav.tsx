@@ -15,7 +15,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
 const navItems: {
-  href: '/account' | '/admin' | '/rooms';
+  href: '/account' | '/admin' | '/notifications' | '/rooms';
   isActive: (pathname: string) => boolean;
   label: string;
   symbol: SymbolName;
@@ -34,6 +34,16 @@ const navItems: {
       ios: 'clock.arrow.circlepath',
       android: 'history',
       web: 'history',
+    },
+  },
+  {
+    href: '/notifications',
+    isActive: (pathname) => pathname === '/notifications',
+    label: 'Notifications',
+    symbol: {
+      ios: 'bell.fill',
+      android: 'notifications',
+      web: 'notifications',
     },
   },
   {
@@ -101,31 +111,39 @@ export function BottomNav({ roomId }: { roomId?: string | null } = {}) {
       >
         <View style={styles.container}>
           <NavButton item={navItems[0]} pathname={pathname} />
+          <NavButton item={navItems[1]} pathname={pathname} />
           <Pressable
-            accessibilityLabel="支出を追加"
+            accessibilityLabel="支出を記録"
             accessibilityRole="button"
             onPress={() => setIsTypeSheetOpen(true)}
-            style={styles.tabButton}
+            style={styles.actionSlot}
           >
-            <SymbolView
-              name={{
-                ios: 'plus.circle',
-                android: 'add_circle_outline',
-                web: 'add_circle_outline',
-              }}
-              size={25}
-              tintColor={theme.textSecondary}
-              fallback={<Text style={{ color: theme.textSecondary }}>＋</Text>}
-            />
+            <View
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: theme.primary,
+                  borderColor: theme.backgroundElement,
+                },
+              ]}
+            >
+              <SymbolView
+                name={{ ios: 'plus', android: 'add', web: 'add' }}
+                size={28}
+                tintColor="#ffffff"
+                weight="semibold"
+                fallback={<Text style={styles.actionFallback}>＋</Text>}
+              />
+            </View>
             <Text
               numberOfLines={1}
-              style={[styles.label, { color: theme.textSecondary }]}
+              style={[styles.actionLabel, { color: theme.primary }]}
             >
-              Add Expense
+              支出記録
             </Text>
           </Pressable>
-          <NavButton item={navItems[1]} pathname={pathname} />
           <NavButton item={navItems[2]} pathname={pathname} />
+          <NavButton item={navItems[3]} pathname={pathname} />
         </View>
       </View>
 
@@ -280,7 +298,49 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 32,
   },
-  container: { height: 49, flexDirection: 'row', alignItems: 'stretch' },
+  actionButton: {
+    position: 'absolute',
+    top: -25,
+    width: 58,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderRadius: 29,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  actionFallback: {
+    color: '#ffffff',
+    fontSize: 30,
+    fontWeight: '500',
+    lineHeight: 31,
+  },
+  actionLabel: {
+    position: 'absolute',
+    top: 37,
+    width: 74,
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
+  actionSlot: {
+    position: 'relative',
+    width: '20%',
+    maxWidth: '20%',
+    height: 54,
+    flexBasis: '20%',
+    flexGrow: 0,
+    flexShrink: 0,
+    alignItems: 'center',
+    overflow: 'visible',
+  },
+  container: { height: 54, flexDirection: 'row', alignItems: 'stretch' },
   feedback: { textAlign: 'center' },
   handle: {
     width: 38,
@@ -316,17 +376,17 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   tabButton: {
-    width: '25%',
-    maxWidth: '25%',
-    flexBasis: '25%',
+    width: '20%',
+    maxWidth: '20%',
+    flexBasis: '20%',
     flexGrow: 0,
     flexShrink: 0,
     minWidth: 0,
-    height: 49,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    paddingTop: 4,
+    paddingTop: 6,
   },
   typeCard: {
     minHeight: 116,
