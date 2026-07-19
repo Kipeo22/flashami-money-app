@@ -127,7 +127,7 @@ export function TaskSheetModal({
     setFeedback(null);
 
     try {
-      await updateExpenseReviewStatus({
+      const updated = await updateExpenseReviewStatus({
         expenseId: item.expense.id,
         rejectionReason,
         roomId: item.room.id,
@@ -139,7 +139,10 @@ export function TaskSheetModal({
         'rejected',
         rejectionReason,
       );
-      setFeedback(`${item.expense.description} を差し戻しました。`);
+      setFeedback(
+        updated.discord_notification_warning ??
+          `${item.expense.description} を差し戻しました。`,
+      );
     } catch (caughtError) {
       setFeedback(
         caughtError instanceof Error

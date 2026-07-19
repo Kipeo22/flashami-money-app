@@ -140,7 +140,7 @@ export default function AdminReviewsScreen() {
     setFeedback(null);
 
     try {
-      await updateExpenseReviewStatus({
+      const updated = await updateExpenseReviewStatus({
         expenseId: item.expense.id,
         rejectionReason,
         roomId: item.room.id,
@@ -152,7 +152,10 @@ export default function AdminReviewsScreen() {
         'rejected',
         rejectionReason,
       );
-      setFeedback(`${item.expense.description} を差し戻しました。`);
+      setFeedback(
+        updated.discord_notification_warning ??
+          `${item.expense.description} を差し戻しました。`,
+      );
     } catch (caughtError) {
       setFeedback(
         caughtError instanceof Error

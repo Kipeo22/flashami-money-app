@@ -9,6 +9,10 @@ import {
   type RoomMemberRole,
   type RoomMemberRecord,
 } from '@/lib/rooms';
+import {
+  notifyDiscordExpenseCreated,
+  notifyDiscordExpenseRejected,
+} from '@/lib/discord';
 import { getSupabaseClient } from '@/lib/supabase';
 
 export type ExpenseType = 'common' | 'personal';
@@ -53,6 +57,10 @@ export type ExpenseRecord = {
   created_at: string;
 };
 
+export type CreateExpenseResult = ExpenseRecord & {
+  discord_notification_warning?: string;
+};
+
 export type ExpenseTargetRecord = {
   id: string;
   expense_id: string;
@@ -73,6 +81,7 @@ export type ExpenseListItem = ExpenseRecord & {
 
 export type ExpenseDetailRecord = ExpenseRecord & {
   current_user_role: RoomMemberRole;
+  discord_notification_warning?: string;
   is_current_user_payer: boolean;
   payer_display_name: string | null;
   payer_email: string | null;
@@ -231,28 +240,37 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
     }
   }
 
-  if (input.expenseType !== 'personal') {
-    return expense;
+  if (input.expenseType === 'personal') {
+    const targetsToInsert = input.targets.map(({ amountShare, member }) => ({
+      expense_id: expense.id,
+      user_id: member.user_id,
+      email: member.email,
+      display_name: member.display_name,
+      amount_share: input.splitType === 'custom' ? amountShare : null,
+    }));
+
+    const { error: targetsError } = await supabase
+      .from('expense_targets')
+      .insert(targetsToInsert);
+
+    if (targetsError) {
+      await cleanupFailedExpense(expense.id, uploadedReceiptPath);
+      throw new Error(formatSupabaseError(targetsError));
+    }
   }
 
-  const targetsToInsert = input.targets.map(({ amountShare, member }) => ({
-    expense_id: expense.id,
-    user_id: member.user_id,
-    email: member.email,
-    display_name: member.display_name,
-    amount_share: input.splitType === 'custom' ? amountShare : null,
-  }));
-
-  const { error: targetsError } = await supabase
-    .from('expense_targets')
-    .insert(targetsToInsert);
-
-  if (targetsError) {
-    await cleanupFailedExpense(expense.id, uploadedReceiptPath);
-    throw new Error(formatSupabaseError(targetsError));
+  try {
+    await notifyDiscordExpenseCreated(input.roomId, expense.id);
+    return expense satisfies CreateExpenseResult;
+  } catch (error) {
+    return {
+      ...expense,
+      discord_notification_warning:
+        error instanceof Error
+          ? error.message
+          : '支出は登録されましたが、Discordへ通知できませんでした。',
+    } satisfies CreateExpenseResult;
   }
-
-  return expense;
 }
 
 export async function fetchExpenseById(roomId: string, expenseId: string) {
@@ -305,7 +323,7 @@ export async function updateExpenseReviewStatus({
   rejectionReason?: string;
   roomId: string;
   status: Extract<ExpenseStatus, 'approved' | 'rejected'>;
-}) {
+}): Promise<ExpenseDetailRecord> {
   await requireCurrentUserRoomAdmin(roomId);
 
   const normalizedRejectionReason = rejectionReason?.trim() ?? '';
@@ -328,7 +346,23 @@ export async function updateExpenseReviewStatus({
     throw new Error(formatSupabaseError(error));
   }
 
-  return fetchExpenseById(roomId, expenseId);
+  const expense = await fetchExpenseById(roomId, expenseId);
+  if (status !== 'rejected') {
+    return expense;
+  }
+
+  try {
+    await notifyDiscordExpenseRejected(roomId, expenseId);
+    return expense;
+  } catch (notificationError) {
+    return {
+      ...expense,
+      discord_notification_warning:
+        notificationError instanceof Error
+          ? notificationError.message
+          : '支出は差し戻されましたが、Discordへ通知できませんでした。',
+    } satisfies ExpenseDetailRecord;
+  }
 }
 
 export async function fetchRoomExpenses(roomId: string) {

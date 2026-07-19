@@ -96,9 +96,11 @@ export default function ExpenseDetailScreen() {
       setExpense(updated);
       setRejectionOpen(false);
       setFeedback(
-        status === 'approved'
-          ? '支出を承認しました。'
-          : '支出を差し戻しました。',
+        updated.discord_notification_warning
+          ? updated.discord_notification_warning
+          : status === 'approved'
+            ? '支出を承認しました。'
+            : '支出を差し戻しました。',
       );
     } catch (error) {
       setFeedback(

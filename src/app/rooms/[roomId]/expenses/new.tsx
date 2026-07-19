@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -373,6 +374,14 @@ export default function ExpenseFormScreen() {
       }
       setConfirming(false);
       router.replace(`/rooms/${roomId}/expenses/${expense.id}` as never);
+      const notificationWarning =
+        'discord_notification_warning' in expense &&
+        typeof expense.discord_notification_warning === 'string'
+          ? expense.discord_notification_warning
+          : null;
+      if (notificationWarning) {
+        Alert.alert('支出を登録しました', notificationWarning);
+      }
     } catch (error) {
       setConfirming(false);
       setFeedback(

@@ -16,12 +16,18 @@ import {
   AppHeader,
   Badge,
   PrimaryButton,
+  SecondaryButton,
   SurfaceCard,
 } from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import {
+  fetchRoomDiscordWebhookUrl,
+  saveRoomDiscordWebhookUrl,
+  validateDiscordWebhookUrl,
+} from '@/lib/discord';
 import {
   fetchRoomById,
   fetchRoomMembers,
@@ -49,18 +55,27 @@ export default function MembersScreen() {
   const [registrationFeedback, setRegistrationFeedback] = useState<
     string | null
   >(null);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
+  const [discordWebhookVisible, setDiscordWebhookVisible] = useState(false);
+  const [savingDiscord, setSavingDiscord] = useState(false);
+  const [discordFeedback, setDiscordFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     if (!roomId || !isSupabaseConfigured) {
       return;
     }
-    Promise.all([fetchRoomMembers(roomId), fetchRoomById(roomId)])
-      .then(([memberData, room]) => {
+    Promise.all([
+      fetchRoomMembers(roomId),
+      fetchRoomById(roomId),
+      fetchRoomDiscordWebhookUrl(roomId),
+    ])
+      .then(([memberData, room, webhookUrl]) => {
         if (!active) return;
         setMembers(memberData);
         setRegistrationStartDate(room.expense_registration_start_date ?? '');
         setRegistrationEndDate(room.expense_registration_end_date ?? '');
+        setDiscordWebhookUrl(webhookUrl);
       })
       .catch(
         (error) =>
@@ -117,6 +132,38 @@ export default function MembersScreen() {
     }
   };
 
+  const saveDiscordIntegration = async () => {
+    if (!roomId) return;
+    const validationError = validateDiscordWebhookUrl(discordWebhookUrl);
+    if (validationError) {
+      setDiscordFeedback(validationError);
+      return;
+    }
+
+    setSavingDiscord(true);
+    setDiscordFeedback(null);
+    try {
+      const savedUrl = await saveRoomDiscordWebhookUrl(
+        roomId,
+        discordWebhookUrl,
+      );
+      setDiscordWebhookUrl(savedUrl);
+      setDiscordFeedback(
+        savedUrl
+          ? 'Discord通知を接続しました。次の支出登録から通知されます。'
+          : 'Discord通知の接続を解除しました。',
+      );
+    } catch (error) {
+      setDiscordFeedback(
+        error instanceof Error
+          ? error.message
+          : 'Discord通知設定を保存できませんでした。',
+      );
+    } finally {
+      setSavingDiscord(false);
+    }
+  };
+
   return (
     <ThemedView type="backgroundElement" style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -143,6 +190,114 @@ export default function MembersScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
+            <SurfaceCard style={styles.discordCard}>
+              <View style={styles.registrationHeading}>
+                <View style={styles.registrationTitle}>
+                  <ThemedText type="default" style={styles.memberName}>
+                    Discord通知
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    支出登録を指定チャンネルへ自動投稿
+                  </ThemedText>
+                </View>
+                <Badge
+                  label={discordWebhookUrl ? '接続済み' : '未接続'}
+                  tone={discordWebhookUrl ? 'primary' : 'neutral'}
+                />
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                Discordのチャンネル設定からウェブフックを作成し、「ウェブフックURLをコピー」で取得したURLを貼り付けてください。
+              </ThemedText>
+              <View style={[styles.inputShell, { backgroundColor: '#f3f4ff' }]}>
+                <SymbolView
+                  name={{ ios: 'link', android: 'link', web: 'link' }}
+                  size={20}
+                  tintColor={theme.primary}
+                  fallback={<Text style={{ color: theme.primary }}>⌁</Text>}
+                />
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  onChangeText={(value) => {
+                    setDiscordWebhookUrl(value);
+                    setDiscordFeedback(null);
+                  }}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  placeholderTextColor={theme.textDisabled}
+                  secureTextEntry={!discordWebhookVisible}
+                  style={[styles.input, { color: theme.text }]}
+                  value={discordWebhookUrl}
+                />
+                <Pressable
+                  accessibilityLabel={
+                    discordWebhookVisible
+                      ? 'Webhook URLを隠す'
+                      : 'Webhook URLを表示'
+                  }
+                  hitSlop={8}
+                  onPress={() =>
+                    setDiscordWebhookVisible((visible) => !visible)
+                  }
+                  style={({ pressed }) => pressed && styles.pressed}
+                >
+                  <SymbolView
+                    name={{
+                      ios: discordWebhookVisible ? 'eye.slash' : 'eye',
+                      android: discordWebhookVisible
+                        ? 'visibility_off'
+                        : 'visibility',
+                      web: discordWebhookVisible
+                        ? 'visibility_off'
+                        : 'visibility',
+                    }}
+                    size={20}
+                    tintColor={theme.textSecondary}
+                    fallback={
+                      <Text style={{ color: theme.textSecondary }}>
+                        {discordWebhookVisible ? '隠す' : '表示'}
+                      </Text>
+                    }
+                  />
+                </Pressable>
+              </View>
+              <PrimaryButton
+                disabled={loading || savingDiscord}
+                onPress={saveDiscordIntegration}
+              >
+                {savingDiscord ? '保存中…' : 'Discord通知を保存'}
+              </PrimaryButton>
+              {discordWebhookUrl ? (
+                <SecondaryButton
+                  onPress={
+                    savingDiscord
+                      ? null
+                      : () => {
+                          setDiscordWebhookUrl('');
+                          setDiscordFeedback(
+                            '「Discord通知を保存」を押すと接続を解除します。',
+                          );
+                        }
+                  }
+                >
+                  接続を解除
+                </SecondaryButton>
+              ) : null}
+              {discordFeedback ? (
+                <ThemedText
+                  type="small"
+                  themeColor={
+                    discordFeedback.includes('しました') ||
+                    discordFeedback.includes('解除します')
+                      ? 'textSecondary'
+                      : 'danger'
+                  }
+                >
+                  {discordFeedback}
+                </ThemedText>
+              ) : null}
+            </SurfaceCard>
+
             <SurfaceCard style={styles.registrationCard}>
               <View style={styles.registrationHeading}>
                 <View style={styles.registrationTitle}>
@@ -358,6 +513,7 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 30,
   },
+  discordCard: { gap: 14 },
   headerWrap: {
     width: '100%',
     maxWidth: MaxContentWidth,
