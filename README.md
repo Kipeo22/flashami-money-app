@@ -1,56 +1,108 @@
-# Welcome to your Expo app 👋
+# Flashami Money
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+イベントや旅行の支出を、参加者と運営者で記録・確認する Expo Router アプリです。iOS、Android、Web の共通コードベースで動作します。
 
-## Get started
+## ローカル開発
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Node.js 22 を使用します。
 
 ```bash
-npm run reset-project
+npm ci
+cp .env.example .env.local
+npm run web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+`.env.local` に次の公開用 Supabase 値を設定します。
 
-### Other setup steps
+```dotenv
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+`EXPO_PUBLIC_` が付く値は Web bundle に含まれます。`service_role` key や database password は絶対に設定しないでください。
 
-## Learn more
+## 検証
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm run validate
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+型チェック、lint、format check、Expo Web static export をまとめて実行します。
 
-## Join the community
+## リリース構成
 
-Join our community of developers creating universal apps.
+- `develop`: 次のリリースを統合するブランチ
+- `main`: 本番ブランチ。更新されると Supabase と Web を自動デプロイ
+- Web: EAS Hosting の production deployment（<https://flashami-money.expo.app>）
+- Database: Supabase migration を timestamp 順に適用
+- iOS / Android: GitHub Actions の `Build mobile` を手動実行（現時点では自動配信しない）
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+`main` への本番 workflow は次の順で動きます。
+
+1. `npm run validate`
+2. `supabase db push --linked`
+3. `eas deploy --prod --environment production --non-interactive`
+
+Database deployment が失敗した場合、Web deployment は開始されません。同時に複数の本番 deployment が走らないよう concurrency も設定しています。
+
+## 初回 CI/CD セットアップ
+
+GitHub の `production` environment を作り、deployment branch を `main` のみに制限します。次の値を登録してください。
+
+Repository secret:
+
+- `EXPO_TOKEN`: Expo account の access token。Web と将来の mobile build で使用
+
+`production` environment secrets:
+
+- `SUPABASE_ACCESS_TOKEN`: Supabase personal access token
+- `SUPABASE_DB_PASSWORD`: production database password
+
+`production` environment variable:
+
+- `SUPABASE_PROJECT_ID`: production project reference
+
+EAS production environment には、ローカル値を表示せず次のコマンドで Web/mobile 共通の公開用変数を登録できます。
+
+```bash
+npx --yes eas-cli@21.0.2 env:push production --path .env.local --force
+```
+
+Supabase Auth の URL Configuration では、Site URL を `https://flashami-money.expo.app`、Redirect URL を `https://flashami-money.expo.app/auth/callback` に設定します。ローカル開発用 URL と将来の native deep link `flashamimoneyapp://auth/callback` も必要に応じて Redirect URL に残します。
+
+## 手動リリース
+
+Web:
+
+```bash
+npm run validate
+npx --yes eas-cli@21.0.2 deploy --prod --environment production
+```
+
+Supabase:
+
+```bash
+npx --yes supabase@2.109.1 migration list --linked
+npx --yes supabase@2.109.1 db push --linked --dry-run
+npx --yes supabase@2.109.1 db push --linked
+```
+
+remote migration history にだけ存在する version がある場合は、削除や `migration repair` を先に行わず、その migration file を Git へ戻して履歴を一致させます。
+
+## iOS / Android の準備
+
+`eas.json` には次の profile を用意しています。
+
+- `preview`: 内部配布用。Android は APK
+- `production`: store 配布用。build number/version code は EAS で自動更新
+
+GitHub Actions の `Build mobile` から platform と profile を選択できます。store 提出を有効にする前に、Apple Developer / App Store Connect と Google Play Console の契約、署名情報、store listing、privacy 情報を準備してください。
+
+CLI から実行する場合:
+
+```bash
+npx --yes eas-cli@21.0.2 build --platform all --profile preview
+npx --yes eas-cli@21.0.2 build --platform all --profile production --auto-submit
+```
+
+bundle identifier / package name は `com.kipeo22.flashamimoneyapp` です。store 登録後は変更できないため、初回 production build の前に最終確認してください。
