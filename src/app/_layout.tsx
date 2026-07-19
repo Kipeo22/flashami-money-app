@@ -32,16 +32,17 @@ export default function RootLayout() {
           <Stack.Screen name="admin" options={{ title: 'やること' }} />
           <Stack.Screen
             name="admin/rooms"
-            options={{ title: 'Room別タスク' }}
+            options={{ title: 'イベント別タスク' }}
           />
           <Stack.Screen name="admin/reviews" options={{ title: '承認待ち' }} />
           <Stack.Screen name="admin/expenses" options={{ title: '支出詳細' }} />
           <Stack.Screen name="login" options={{ title: 'ログイン' }} />
           <Stack.Screen name="notifications" options={{ title: '通知' }} />
-          <Stack.Screen name="account" options={{ title: 'アカウント' }} />
+          <Stack.Screen name="expenses" options={{ title: '自分の支出' }} />
+          <Stack.Screen name="account" options={{ title: '設定' }} />
           <Stack.Screen name="rooms/index" options={{ title: 'イベント' }} />
           <Stack.Screen name="rooms/[roomId]" options={{ title: '支出一覧' }} />
-          <Stack.Screen name="rooms/new" options={{ title: 'room作成' }} />
+          <Stack.Screen name="rooms/new" options={{ title: 'イベント作成' }} />
           <Stack.Screen
             name="rooms/[roomId]/members"
             options={{ title: 'メンバー' }}

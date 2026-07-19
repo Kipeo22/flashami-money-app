@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Radius, Shadows, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { signOut } from '@/lib/auth';
+import { fetchCurrentUserRooms } from '@/lib/rooms';
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 
 const AVATAR_COLOR_STORAGE_KEY = 'flashami-money-app:avatar-color';
@@ -23,6 +24,7 @@ export default function AccountScreen() {
   const [email, setEmail] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -33,9 +35,10 @@ export default function AccountScreen() {
         return;
       }
 
-      const [storedAvatarColor, userResult] = await Promise.all([
+      const [storedAvatarColor, userResult, rooms] = await Promise.all([
         AsyncStorage.getItem(AVATAR_COLOR_STORAGE_KEY),
         getSupabaseClient().auth.getUser(),
+        fetchCurrentUserRooms().catch(() => []),
       ]);
 
       if (!active) {
@@ -52,6 +55,7 @@ export default function AccountScreen() {
       }
 
       setEmail(userResult.data.user.email ?? null);
+      setHasAdminAccess(rooms.some((room) => room.member_role === 'admin'));
     }
 
     loadAccount();
@@ -92,12 +96,62 @@ export default function AccountScreen() {
           <ThemedView style={styles.container}>
             <ThemedView style={styles.header}>
               <ThemedText type="title" style={styles.screenTitle}>
-                アカウント
+                設定
               </ThemedText>
               <ThemedText themeColor="textSecondary">
-                プロフィールとログアウトを管理します。
+                プロフィールとアプリの機能を管理します。
               </ThemedText>
             </ThemedView>
+
+            {hasAdminAccess ? (
+              <ThemedView
+                type="backgroundElement"
+                style={[
+                  styles.card,
+                  { borderColor: theme.border },
+                  Shadows.card,
+                ]}
+              >
+                <ThemedText type="smallBold">運営メニュー</ThemedText>
+                <Pressable
+                  accessibilityHint="管理中のイベントと承認待ちの支出を確認します"
+                  accessibilityRole="button"
+                  onPress={() => router.push('/admin')}
+                  style={({ pressed }) => [
+                    styles.adminMenuRow,
+                    { backgroundColor: theme.overBackground },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.adminMenuIcon,
+                      { backgroundColor: theme.primarySoft },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{
+                        ios: 'chart.bar.fill',
+                        android: 'dashboard',
+                        web: 'dashboard',
+                      }}
+                      size={22}
+                      tintColor={theme.primary}
+                      fallback={<Text style={{ color: theme.primary }}>▦</Text>}
+                    />
+                  </View>
+                  <View style={styles.accountText}>
+                    <ThemedText type="smallBold">運営ダッシュボード</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      複数イベントの支出・承認状況をまとめて確認
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={{ color: theme.textDisabled }}>
+                    ›
+                  </ThemedText>
+                </Pressable>
+              </ThemedView>
+            ) : null}
 
             <ThemedView
               type="backgroundElement"
@@ -286,6 +340,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20,
+  },
+  adminMenuIcon: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+  adminMenuRow: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    borderRadius: Radius.control,
+    padding: Spacing.three,
   },
   avatarText: {
     color: '#ffffff',

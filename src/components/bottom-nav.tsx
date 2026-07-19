@@ -1,7 +1,14 @@
 import { usePathname, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState, type ComponentProps } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RoundIcon } from '@/components/ios-ui';
@@ -9,13 +16,19 @@ import { ThemedText } from '@/components/themed-text';
 import { Radius, Shadows } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ExpenseType } from '@/lib/expenses';
-import { fetchCurrentUserRooms } from '@/lib/rooms';
+import {
+  fetchCurrentUserRooms,
+  getLocalIsoDate,
+  isExpenseRegistrationOpen,
+  isRoomActiveOnDate,
+  type UserRoomRecord,
+} from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
 const navItems: {
-  href: '/account' | '/admin' | '/notifications' | '/rooms';
+  href: '/account' | '/expenses' | '/notifications' | '/rooms';
   isActive: (pathname: string) => boolean;
   label: string;
   symbol: SymbolName;
@@ -23,15 +36,15 @@ const navItems: {
   {
     href: '/rooms',
     isActive: (pathname) => pathname.startsWith('/rooms'),
-    label: 'Rooms',
+    label: 'イベント',
     symbol: { ios: 'person.2.fill', android: 'groups', web: 'groups' },
   },
   {
-    href: '/admin',
-    isActive: (pathname) => pathname.startsWith('/admin'),
-    label: 'Activity',
+    href: '/expenses',
+    isActive: (pathname) => pathname === '/expenses',
+    label: '履歴',
     symbol: {
-      ios: 'clock.arrow.circlepath',
+      ios: 'clock.fill',
       android: 'history',
       web: 'history',
     },
@@ -39,7 +52,7 @@ const navItems: {
   {
     href: '/notifications',
     isActive: (pathname) => pathname === '/notifications',
-    label: 'Notifications',
+    label: '通知',
     symbol: {
       ios: 'bell.fill',
       android: 'notifications',
@@ -49,7 +62,7 @@ const navItems: {
   {
     href: '/account',
     isActive: (pathname) => pathname === '/account',
-    label: 'Settings',
+    label: '設定',
     symbol: { ios: 'gearshape.fill', android: 'settings', web: 'settings' },
   },
 ];
@@ -62,34 +75,75 @@ export function BottomNav({ roomId }: { roomId?: string | null } = {}) {
   const [isTypeSheetOpen, setIsTypeSheetOpen] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [roomChoices, setRoomChoices] = useState<UserRoomRecord[]>([]);
+  const [selectedExpenseType, setSelectedExpenseType] =
+    useState<ExpenseType | null>(null);
 
-  const openExpenseForm = async (type: ExpenseType) => {
+  const closeSheet = () => {
+    setIsTypeSheetOpen(false);
+    setSelectedExpenseType(null);
+    setRoomChoices([]);
+    setFeedback(null);
+  };
+
+  const openExpenseForm = async (
+    type: ExpenseType,
+    selectedRoomId?: string,
+  ) => {
     if (isOpening) return;
     setIsOpening(true);
     setFeedback(null);
 
     try {
-      let targetRoomId = roomId ?? null;
-      if (!targetRoomId) {
-        if (!isSupabaseConfigured) {
-          router.push('/login');
-          setIsTypeSheetOpen(false);
-          return;
-        }
-        const rooms = await fetchCurrentUserRooms();
-        targetRoomId = rooms[0]?.id ?? null;
-      }
-
-      if (!targetRoomId) {
-        setFeedback('支出を追加するroomを先に作成してください。');
+      if (!isSupabaseConfigured) {
+        router.push('/login');
+        closeSheet();
         return;
       }
 
-      setIsTypeSheetOpen(false);
+      const rooms = await fetchCurrentUserRooms();
+      const today = getLocalIsoDate();
+      const openRooms = rooms.filter((candidate) =>
+        isExpenseRegistrationOpen(candidate, today),
+      );
+      let targetRoomId = selectedRoomId ?? roomId ?? null;
+
+      if (targetRoomId) {
+        const selectedRoom = openRooms.find(
+          (candidate) => candidate.id === targetRoomId,
+        );
+        if (!selectedRoom) {
+          setFeedback('このイベントは現在、支出登録期間外です。');
+          return;
+        }
+      } else {
+        const activeRooms = openRooms.filter((candidate) =>
+          isRoomActiveOnDate(candidate, today),
+        );
+        if (activeRooms.length === 1) {
+          targetRoomId = activeRooms[0].id;
+        } else {
+          const choices = activeRooms.length > 1 ? activeRooms : openRooms;
+          if (choices.length > 0) {
+            setSelectedExpenseType(type);
+            setRoomChoices(choices);
+            return;
+          }
+        }
+      }
+
+      if (!targetRoomId) {
+        setFeedback('現在、支出を登録できるイベントがありません。');
+        return;
+      }
+
+      closeSheet();
       router.push(`/rooms/${targetRoomId}/expenses/new?type=${type}` as never);
     } catch (error) {
       setFeedback(
-        error instanceof Error ? error.message : 'roomを取得できませんでした。',
+        error instanceof Error
+          ? error.message
+          : 'イベントを取得できませんでした。',
       );
     } finally {
       setIsOpening(false);
@@ -149,48 +203,70 @@ export function BottomNav({ roomId }: { roomId?: string | null } = {}) {
 
       <Modal
         animationType="slide"
-        onRequestClose={() => setIsTypeSheetOpen(false)}
+        onRequestClose={closeSheet}
         transparent
         visible={isTypeSheetOpen}
       >
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => setIsTypeSheetOpen(false)}
-        >
+        <Pressable style={styles.backdrop} onPress={closeSheet}>
           <Pressable
             onPress={(event) => event.stopPropagation()}
             style={[styles.sheet, { backgroundColor: theme.backgroundElement }]}
           >
             <View style={[styles.handle, { backgroundColor: theme.border }]} />
             <ThemedText type="subtitle" style={styles.sheetTitle}>
-              どの種類の支出ですか？
+              {selectedExpenseType
+                ? '登録先のイベントを選択'
+                : 'どの種類の支出ですか？'}
             </ThemedText>
 
-            <ExpenseTypeCard
-              description={
-                '参加費やイベント会計から支払うもの\n（宿泊費、レンタカー代など）'
-              }
-              label="共通経費"
-              onPress={() => openExpenseForm('common')}
-              symbol={{
-                ios: 'person.2.fill',
-                android: 'groups',
-                web: 'groups',
-              }}
-            />
-            <ExpenseTypeCard
-              color="orange"
-              description={
-                '一部メンバー間であとから割り勘するもの\n（食事、タクシーなど）'
-              }
-              label="個人間立替"
-              onPress={() => openExpenseForm('personal')}
-              symbol={{
-                ios: 'person.badge.plus',
-                android: 'person_add',
-                web: 'person_add',
-              }}
-            />
+            <ScrollView
+              contentContainerStyle={styles.sheetBodyContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator
+              style={styles.sheetBody}
+            >
+              {selectedExpenseType ? (
+                <View style={styles.roomChoiceList}>
+                  {roomChoices.map((choice) => (
+                    <RoomChoiceCard
+                      key={choice.id}
+                      onPress={() =>
+                        openExpenseForm(selectedExpenseType, choice.id)
+                      }
+                      room={choice}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.expenseTypeList}>
+                  <ExpenseTypeCard
+                    description={
+                      '参加費やイベント会計から支払うもの\n（宿泊費、レンタカー代など）'
+                    }
+                    label="共通経費"
+                    onPress={() => openExpenseForm('common')}
+                    symbol={{
+                      ios: 'person.2.fill',
+                      android: 'groups',
+                      web: 'groups',
+                    }}
+                  />
+                  <ExpenseTypeCard
+                    color="orange"
+                    description={
+                      '一部メンバー間であとから割り勘するもの\n（食事、タクシーなど）'
+                    }
+                    label="個人間立替"
+                    onPress={() => openExpenseForm('personal')}
+                    symbol={{
+                      ios: 'person.badge.plus',
+                      android: 'person_add',
+                      web: 'person_add',
+                    }}
+                  />
+                </View>
+              )}
+            </ScrollView>
 
             {feedback ? (
               <ThemedText
@@ -203,7 +279,7 @@ export function BottomNav({ roomId }: { roomId?: string | null } = {}) {
             ) : null}
 
             <Pressable
-              onPress={() => setIsTypeSheetOpen(false)}
+              onPress={closeSheet}
               style={[styles.cancelButton, { borderColor: theme.border }]}
             >
               <ThemedText>キャンセル</ThemedText>
@@ -246,6 +322,37 @@ function NavButton({
       >
         {item.label}
       </Text>
+    </Pressable>
+  );
+}
+
+function RoomChoiceCard({
+  onPress,
+  room,
+}: {
+  onPress: () => void;
+  room: UserRoomRecord;
+}) {
+  const theme = useTheme();
+  const period =
+    room.start_date || room.end_date
+      ? `${room.start_date ?? '開始日未定'} 〜 ${room.end_date ?? '終了日未定'}`
+      : 'イベント日程未設定';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.roomChoice, { backgroundColor: theme.overBackground }]}
+    >
+      <View style={styles.roomChoiceText}>
+        <ThemedText type="default" style={styles.typeTitle}>
+          {room.name}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {period}
+        </ThemedText>
+      </View>
+      <ThemedText style={{ color: theme.primary }}>›</ThemedText>
     </Pressable>
   );
 }
@@ -323,9 +430,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 37,
     width: 74,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
-    lineHeight: 12,
+    lineHeight: 14,
     textAlign: 'center',
     includeFontPadding: false,
   },
@@ -342,6 +449,7 @@ const styles = StyleSheet.create({
   },
   container: { height: 54, flexDirection: 'row', alignItems: 'stretch' },
   feedback: { textAlign: 'center' },
+  expenseTypeList: { gap: 14 },
   handle: {
     width: 38,
     height: 5,
@@ -353,14 +461,26 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 1,
     paddingHorizontal: 2,
-    fontSize: 9,
-    lineHeight: 11,
+    fontSize: 11,
+    lineHeight: 14,
     textAlign: 'center',
     includeFontPadding: false,
   },
+  roomChoice: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: Radius.control,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  roomChoiceList: { gap: 10 },
+  roomChoiceText: { flex: 1, gap: 2 },
   sheet: {
     width: '100%',
     maxWidth: 430,
+    maxHeight: '88%',
     alignSelf: 'center',
     gap: 14,
     borderTopLeftRadius: 26,
@@ -369,6 +489,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 34,
   },
+  sheetBody: { flexShrink: 1 },
+  sheetBodyContent: { paddingVertical: 2 },
   sheetTitle: { marginBottom: 6, textAlign: 'center', fontSize: 22 },
   shell: {
     width: '100%',
