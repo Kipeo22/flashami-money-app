@@ -9,6 +9,8 @@ export type RoomRecord = {
   description: string | null;
   start_date: string | null;
   end_date: string | null;
+  expense_registration_start_date: string | null;
+  expense_registration_end_date: string | null;
 };
 
 export type RoomMemberRecord = {
@@ -34,10 +36,20 @@ export type UserRoomRecord = RoomRecord & {
 type CreateRoomInput = {
   description: string;
   endDate: string;
+  expenseRegistrationEndDate: string;
+  expenseRegistrationStartDate: string;
   memberEmails: string[];
   name: string;
   startDate: string;
 };
+
+const ROOM_SELECT =
+  'id, name, description, start_date, end_date, expense_registration_start_date, expense_registration_end_date';
+const LEGACY_ROOM_SELECT = 'id, name, description, start_date, end_date';
+type LegacyRoomRecord = Omit<
+  RoomRecord,
+  'expense_registration_end_date' | 'expense_registration_start_date'
+>;
 
 export function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -75,7 +87,7 @@ export function dedupeMemberEmails(emails: string[], currentUserEmail: string) {
 
 export function validateRoomInput(input: CreateRoomInput) {
   if (!input.name.trim()) {
-    return 'room名を入力してください。';
+    return 'イベント名を入力してください。';
   }
 
   if (input.startDate && !isValidIsoDate(input.startDate)) {
@@ -88,6 +100,14 @@ export function validateRoomInput(input: CreateRoomInput) {
 
   if (input.startDate && input.endDate && input.startDate > input.endDate) {
     return '終了日は開始日以降にしてください。';
+  }
+
+  const registrationError = validateExpenseRegistrationPeriod(
+    input.expenseRegistrationStartDate,
+    input.expenseRegistrationEndDate,
+  );
+  if (registrationError) {
+    return registrationError;
   }
 
   const invalidEmail = input.memberEmails.find((email) => !isValidEmail(email));
@@ -103,13 +123,15 @@ export async function requireAuthenticatedUser() {
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw error;
+    throw new Error(
+      'ログイン状態を確認できませんでした。もう一度ログインしてください。',
+    );
   }
 
   const user = data.user;
   const email = user?.email;
   if (!user?.id || !email) {
-    throw new Error('roomを作成するにはログインが必要です。');
+    throw new Error('ログインが必要です。');
   }
 
   return { ...user, email };
@@ -127,18 +149,30 @@ export function formatSupabaseError(error: unknown) {
         ? errorRecord.message
         : null;
 
-  if (!message) {
-    return '処理に失敗しました。';
+  const code = typeof errorRecord?.code === 'string' ? errorRecord.code : null;
+  const normalizedMessage = message?.toLowerCase() ?? '';
+
+  if (
+    code === '42501' ||
+    normalizedMessage.includes('row-level security') ||
+    normalizedMessage.includes('permission denied')
+  ) {
+    return 'この操作を行う権限がありません。';
   }
 
-  const details =
-    typeof errorRecord?.details === 'string' ? errorRecord.details : null;
-  const hint = typeof errorRecord?.hint === 'string' ? errorRecord.hint : null;
-  const code = typeof errorRecord?.code === 'string' ? errorRecord.code : null;
+  if (code === '23505') {
+    return '同じ内容がすでに登録されています。';
+  }
 
-  return [message, details, hint, code ? `code: ${code}` : null]
-    .filter(Boolean)
-    .join('\n');
+  if (
+    normalizedMessage.includes('failed to fetch') ||
+    normalizedMessage.includes('network') ||
+    normalizedMessage.includes('timeout')
+  ) {
+    return '通信に失敗しました。通信環境を確認して、もう一度お試しください。';
+  }
+
+  return '処理に失敗しました。時間をおいてもう一度お試しください。';
 }
 
 export async function createRoomWithMembers(input: CreateRoomInput) {
@@ -150,19 +184,49 @@ export async function createRoomWithMembers(input: CreateRoomInput) {
   const supabase = getSupabaseClient();
   const user = await requireAuthenticatedUser();
 
-  const { data: room, error: roomError } = await supabase
+  const roomResult = await supabase
     .from('rooms')
     .insert({
       name: input.name.trim(),
       description: input.description.trim() || null,
       start_date: input.startDate || null,
       end_date: input.endDate || null,
+      expense_registration_start_date:
+        input.expenseRegistrationStartDate || null,
+      expense_registration_end_date: input.expenseRegistrationEndDate || null,
       created_by: user.id,
     })
-    .select('id, name, description, start_date, end_date')
+    .select(ROOM_SELECT)
     .single<RoomRecord>();
 
-  if (roomError) {
+  let room = roomResult.data;
+  let roomError = roomResult.error;
+  if (roomError && isMissingExpenseRegistrationColumnsError(roomError)) {
+    if (
+      input.expenseRegistrationStartDate ||
+      input.expenseRegistrationEndDate
+    ) {
+      throw new Error(expenseRegistrationMigrationMessage);
+    }
+
+    const legacyResult = await supabase
+      .from('rooms')
+      .insert({
+        name: input.name.trim(),
+        description: input.description.trim() || null,
+        start_date: input.startDate || null,
+        end_date: input.endDate || null,
+        created_by: user.id,
+      })
+      .select(LEGACY_ROOM_SELECT)
+      .single<LegacyRoomRecord>();
+    room = legacyResult.data
+      ? withExpenseRegistrationDefaults(legacyResult.data)
+      : null;
+    roomError = legacyResult.error;
+  }
+
+  if (roomError || !room) {
     throw new Error(formatSupabaseError(roomError));
   }
 
@@ -223,7 +287,7 @@ export async function ensureCurrentUserRoomMembership(roomId: string) {
 
   const membership = memberships[0];
   if (!membership) {
-    throw new Error('このroomの参加者として登録されていません。');
+    throw new Error('このイベントの参加者として登録されていません。');
   }
 
   if (membership.user_id === user.id && membership.status === 'joined') {
@@ -251,9 +315,7 @@ export async function requireCurrentUserRoomAdmin(roomId: string) {
   const membership = await ensureCurrentUserRoomMembership(roomId);
 
   if (membership.role !== 'admin') {
-    throw new Error(
-      '支出ステータスを変更できるのは管理権限があるメンバーのみです。',
-    );
+    throw new Error('この操作を行えるのは運営権限があるメンバーのみです。');
   }
 
   return membership;
@@ -320,15 +382,7 @@ export async function fetchCurrentUserRooms() {
     memberships.map((membership) => [membership.room_id, membership]),
   );
 
-  const { data: rooms, error: roomsError } = await supabase
-    .from('rooms')
-    .select('id, name, description, start_date, end_date')
-    .in('id', roomIds)
-    .returns<RoomRecord[]>();
-
-  if (roomsError) {
-    throw new Error(formatSupabaseError(roomsError));
-  }
+  const rooms = await fetchRoomsByIds(roomIds);
 
   const { data: expenses, error: expensesError } = await supabase
     .from('expenses')
@@ -410,17 +464,170 @@ export async function fetchCurrentUserRooms() {
 
 export async function fetchRoomById(roomId: string) {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
+  const result = await supabase
     .from('rooms')
-    .select('id, name, description, start_date, end_date')
+    .select(ROOM_SELECT)
     .eq('id', roomId)
     .single<RoomRecord>();
 
+  if (!result.error && result.data) {
+    return result.data;
+  }
+
+  if (isMissingExpenseRegistrationColumnsError(result.error)) {
+    const legacyResult = await supabase
+      .from('rooms')
+      .select(LEGACY_ROOM_SELECT)
+      .eq('id', roomId)
+      .single<LegacyRoomRecord>();
+    if (legacyResult.error || !legacyResult.data) {
+      throw new Error(formatSupabaseError(legacyResult.error));
+    }
+    return withExpenseRegistrationDefaults(legacyResult.data);
+  }
+
+  throw new Error(formatSupabaseError(result.error));
+}
+
+export function getLocalIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function isRoomActiveOnDate(room: RoomRecord, date: string) {
+  if (!room.start_date && !room.end_date) {
+    return false;
+  }
+
+  return (
+    (!room.start_date || room.start_date <= date) &&
+    (!room.end_date || room.end_date >= date)
+  );
+}
+
+export function isExpenseRegistrationOpen(
+  room: RoomRecord,
+  date = getLocalIsoDate(),
+) {
+  return (
+    (!room.expense_registration_start_date ||
+      room.expense_registration_start_date <= date) &&
+    (!room.expense_registration_end_date ||
+      room.expense_registration_end_date >= date)
+  );
+}
+
+export function validateExpenseRegistrationPeriod(
+  startDate: string,
+  endDate: string,
+) {
+  if (startDate && !isValidIsoDate(startDate)) {
+    return '支出登録の開始日は YYYY-MM-DD 形式で入力してください。';
+  }
+
+  if (endDate && !isValidIsoDate(endDate)) {
+    return '支出登録の終了日は YYYY-MM-DD 形式で入力してください。';
+  }
+
+  if (startDate && endDate && startDate > endDate) {
+    return '支出登録の終了日は開始日以降にしてください。';
+  }
+
+  return null;
+}
+
+export async function updateRoomExpenseRegistrationPeriod({
+  endDate,
+  roomId,
+  startDate,
+}: {
+  endDate: string;
+  roomId: string;
+  startDate: string;
+}) {
+  const validationError = validateExpenseRegistrationPeriod(startDate, endDate);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  await requireCurrentUserRoomAdmin(roomId);
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('rooms')
+    .update({
+      expense_registration_start_date: startDate || null,
+      expense_registration_end_date: endDate || null,
+    })
+    .eq('id', roomId)
+    .select(ROOM_SELECT)
+    .single<RoomRecord>();
+
   if (error) {
+    if (isMissingExpenseRegistrationColumnsError(error)) {
+      throw new Error(expenseRegistrationMigrationMessage);
+    }
     throw new Error(formatSupabaseError(error));
   }
 
   return data;
+}
+
+export async function ensureExpenseRegistrationOpen(roomId: string) {
+  const room = await fetchRoomById(roomId);
+  if (!isExpenseRegistrationOpen(room)) {
+    throw new Error('このイベントは現在、支出登録期間外です。');
+  }
+  return room;
+}
+
+const expenseRegistrationMigrationMessage =
+  '支出登録期間機能の準備が完了していません。運営者にお問い合わせください。';
+
+function isMissingExpenseRegistrationColumnsError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const record = error as Record<string, unknown>;
+  const message = typeof record.message === 'string' ? record.message : '';
+  return (
+    (record.code === '42703' || record.code === 'PGRST204') &&
+    message.includes('expense_registration_')
+  );
+}
+
+function withExpenseRegistrationDefaults(room: LegacyRoomRecord): RoomRecord {
+  return {
+    ...room,
+    expense_registration_end_date: null,
+    expense_registration_start_date: null,
+  };
+}
+
+async function fetchRoomsByIds(roomIds: string[]) {
+  const supabase = getSupabaseClient();
+  const result = await supabase
+    .from('rooms')
+    .select(ROOM_SELECT)
+    .in('id', roomIds)
+    .returns<RoomRecord[]>();
+
+  if (!result.error) {
+    return result.data;
+  }
+
+  if (isMissingExpenseRegistrationColumnsError(result.error)) {
+    const legacyResult = await supabase
+      .from('rooms')
+      .select(LEGACY_ROOM_SELECT)
+      .in('id', roomIds)
+      .returns<LegacyRoomRecord[]>();
+    if (legacyResult.error) {
+      throw new Error(formatSupabaseError(legacyResult.error));
+    }
+    return legacyResult.data.map(withExpenseRegistrationDefaults);
+  }
+
+  throw new Error(formatSupabaseError(result.error));
 }
 
 export async function fetchRoomMembers(roomId: string) {

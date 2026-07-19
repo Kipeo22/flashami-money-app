@@ -1,4 +1,5 @@
 import {
+  ensureExpenseRegistrationOpen,
   ensureCurrentUserRoomMembership,
   fetchRoomMembers,
   formatSupabaseError,
@@ -65,11 +66,14 @@ export type ExpenseListItem = ExpenseRecord & {
   payer_display_name: string | null;
   payer_email: string | null;
   target_count: number;
+  target_emails: string[];
   target_labels: string[];
+  target_user_ids: string[];
 };
 
 export type ExpenseDetailRecord = ExpenseRecord & {
   current_user_role: RoomMemberRole;
+  is_current_user_payer: boolean;
   payer_display_name: string | null;
   payer_email: string | null;
   targets: ExpenseTargetRecord[];
@@ -86,7 +90,7 @@ const BASE64_ALPHABET =
 
 export function validateExpenseInput(input: CreateExpenseInput) {
   if (!input.roomId) {
-    return 'roomId が指定されていません。';
+    return 'イベントが指定されていません。';
   }
 
   if (input.amount < 1 || !Number.isInteger(input.amount)) {
@@ -162,6 +166,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
   }
 
   await ensureCurrentUserRoomMembership(input.roomId);
+  await ensureExpenseRegistrationOpen(input.roomId);
 
   const supabase = getSupabaseClient();
   const user = await requireAuthenticatedUser();
@@ -252,6 +257,7 @@ export async function createExpenseWithTargets(input: CreateExpenseInput) {
 
 export async function fetchExpenseById(roomId: string, expenseId: string) {
   const currentMembership = await ensureCurrentUserRoomMembership(roomId);
+  const currentUser = await requireAuthenticatedUser();
 
   const supabase = getSupabaseClient();
   const [{ data, error }, members] = await Promise.all([
@@ -283,6 +289,7 @@ export async function fetchExpenseById(roomId: string, expenseId: string) {
   return {
     ...data,
     current_user_role: currentMembership.role,
+    is_current_user_payer: data.payer_id === currentUser.id,
     ...findPayerDisplay(data.payer_id, members),
     targets,
   } satisfies ExpenseDetailRecord;
@@ -375,9 +382,123 @@ export async function fetchRoomExpenses(roomId: string) {
       ...expense,
       ...findPayerDisplay(expense.payer_id, members),
       target_count: expenseTargets.length,
+      target_emails: expenseTargets
+        .map((target) => target.email)
+        .filter((email): email is string => Boolean(email)),
       target_labels: expenseTargets.map(formatTargetLabel),
+      target_user_ids: expenseTargets
+        .map((target) => target.user_id)
+        .filter((userId): userId is string => Boolean(userId)),
     } satisfies ExpenseListItem;
   });
+}
+
+export async function updateRejectedExpenseWithTargets({
+  expenseId,
+  ...input
+}: CreateExpenseInput & { expenseId: string }) {
+  const validationError = validateExpenseInput(input);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  await ensureCurrentUserRoomMembership(input.roomId);
+  await ensureExpenseRegistrationOpen(input.roomId);
+  const user = await requireAuthenticatedUser();
+  const supabase = getSupabaseClient();
+  const { data: currentExpense, error: currentExpenseError } = await supabase
+    .from('expenses')
+    .select(EXPENSE_SELECT)
+    .eq('id', expenseId)
+    .eq('room_id', input.roomId)
+    .single<ExpenseRecord>();
+
+  if (currentExpenseError || !currentExpense) {
+    throw new Error(
+      currentExpenseError
+        ? formatSupabaseError(currentExpenseError)
+        : '支出情報を取得できませんでした。',
+    );
+  }
+  if (currentExpense.payer_id !== user.id) {
+    throw new Error('この支出を修正できるのは登録した本人だけです。');
+  }
+  if (currentExpense.status !== 'rejected') {
+    throw new Error('差し戻し中の支出だけ修正して再申請できます。');
+  }
+
+  let receiptImageUrl = input.receiptImageUrl.trim() || null;
+  const receiptImageBase64 = input.receiptImageBase64?.trim() || null;
+  if (receiptImageBase64) {
+    const upload = await uploadReceiptImage({
+      base64: receiptImageBase64,
+      expenseId,
+      roomId: input.roomId,
+      upsert: true,
+    });
+    receiptImageUrl = upload.publicUrl;
+  }
+
+  const hasReceiptImage = Boolean(receiptImageUrl);
+  const { error: updateError } = await supabase
+    .from('expenses')
+    .update({
+      amount: input.amount,
+      category: input.category.trim(),
+      description: input.description.trim(),
+      expense_type: input.expenseType,
+      no_receipt_note: hasReceiptImage ? null : input.noReceiptNote.trim(),
+      no_receipt_reason: hasReceiptImage ? null : input.noReceiptReason.trim(),
+      paid_at: input.paidAt,
+      receipt_image_url: receiptImageUrl,
+      split_type: input.expenseType === 'personal' ? input.splitType : null,
+    })
+    .eq('id', expenseId)
+    .eq('room_id', input.roomId)
+    .eq('payer_id', user.id)
+    .eq('status', 'rejected');
+
+  if (updateError) {
+    throw new Error(formatSupabaseError(updateError));
+  }
+
+  const { error: deleteTargetsError } = await supabase
+    .from('expense_targets')
+    .delete()
+    .eq('expense_id', expenseId);
+  if (deleteTargetsError) {
+    throw new Error(formatSupabaseError(deleteTargetsError));
+  }
+
+  if (input.expenseType === 'personal') {
+    const { error: targetsError } = await supabase
+      .from('expense_targets')
+      .insert(
+        input.targets.map(({ amountShare, member }) => ({
+          amount_share: input.splitType === 'custom' ? amountShare : null,
+          display_name: member.display_name,
+          email: member.email,
+          expense_id: expenseId,
+          user_id: member.user_id,
+        })),
+      );
+    if (targetsError) {
+      throw new Error(formatSupabaseError(targetsError));
+    }
+  }
+
+  const { error: submitError } = await supabase
+    .from('expenses')
+    .update({ rejection_reason: null, status: 'pending' })
+    .eq('id', expenseId)
+    .eq('room_id', input.roomId)
+    .eq('payer_id', user.id)
+    .eq('status', 'rejected');
+  if (submitError) {
+    throw new Error(formatSupabaseError(submitError));
+  }
+
+  return fetchExpenseById(input.roomId, expenseId);
 }
 
 export function summarizeExpenses(expenses: ExpenseRecord[]) {
@@ -417,10 +538,12 @@ async function uploadReceiptImage({
   base64,
   expenseId,
   roomId,
+  upsert = false,
 }: {
   base64: string;
   expenseId: string;
   roomId: string;
+  upsert?: boolean;
 }) {
   const supabase = getSupabaseClient();
   const path = `${roomId}/${expenseId}.${RECEIPT_IMAGE_EXTENSION}`;
@@ -429,7 +552,7 @@ async function uploadReceiptImage({
     .upload(path, decodeBase64ToArrayBuffer(base64), {
       cacheControl: '3600',
       contentType: RECEIPT_IMAGE_CONTENT_TYPE,
-      upsert: false,
+      upsert,
     });
 
   if (error) {

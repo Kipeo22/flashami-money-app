@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/date-field';
 import {
   AppHeader,
   Badge,
@@ -22,8 +23,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
+  fetchRoomById,
   fetchRoomMembers,
   inviteRoomMember,
+  updateRoomExpenseRegistrationPeriod,
   type RoomMemberRecord,
 } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -40,14 +43,25 @@ export default function MembersScreen() {
   );
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [savingPeriod, setSavingPeriod] = useState(false);
+  const [registrationStartDate, setRegistrationStartDate] = useState('');
+  const [registrationEndDate, setRegistrationEndDate] = useState('');
+  const [registrationFeedback, setRegistrationFeedback] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     let active = true;
     if (!roomId || !isSupabaseConfigured) {
       return;
     }
-    fetchRoomMembers(roomId)
-      .then((data) => active && setMembers(data))
+    Promise.all([fetchRoomMembers(roomId), fetchRoomById(roomId)])
+      .then(([memberData, room]) => {
+        if (!active) return;
+        setMembers(memberData);
+        setRegistrationStartDate(room.expense_registration_start_date ?? '');
+        setRegistrationEndDate(room.expense_registration_end_date ?? '');
+      })
       .catch(
         (error) =>
           active &&
@@ -81,6 +95,28 @@ export default function MembersScreen() {
     }
   };
 
+  const saveRegistrationPeriod = async () => {
+    if (!roomId) return;
+    setSavingPeriod(true);
+    setRegistrationFeedback(null);
+    try {
+      await updateRoomExpenseRegistrationPeriod({
+        endDate: registrationEndDate,
+        roomId,
+        startDate: registrationStartDate,
+      });
+      setRegistrationFeedback('支出登録期間を保存しました。');
+    } catch (error) {
+      setRegistrationFeedback(
+        error instanceof Error
+          ? error.message
+          : '支出登録期間を保存できませんでした。',
+      );
+    } finally {
+      setSavingPeriod(false);
+    }
+  };
+
   return (
     <ThemedView type="backgroundElement" style={styles.screen}>
       <SafeAreaView style={styles.safeArea}>
@@ -99,7 +135,7 @@ export default function MembersScreen() {
                 </ThemedText>
               </Pressable>
             }
-            title="参加者管理"
+            title="イベント管理"
           />
         </View>
         <ScrollView
@@ -107,6 +143,55 @@ export default function MembersScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
+            <SurfaceCard style={styles.registrationCard}>
+              <View style={styles.registrationHeading}>
+                <View style={styles.registrationTitle}>
+                  <ThemedText type="default" style={styles.memberName}>
+                    支出登録期間
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    参加者が支出を登録・再申請できる期間
+                  </ThemedText>
+                </View>
+                <Badge label="運営設定" tone="primary" />
+              </View>
+              <View style={styles.periodFields}>
+                <DateField
+                  allowClear
+                  onChange={setRegistrationStartDate}
+                  placeholder="登録開始日を選択"
+                  value={registrationStartDate}
+                />
+                <DateField
+                  allowClear
+                  onChange={setRegistrationEndDate}
+                  placeholder="登録終了日を選択"
+                  value={registrationEndDate}
+                />
+              </View>
+              <ThemedText type="small" themeColor="textSecondary">
+                どちらも空欄の場合は、期間を制限しません。
+              </ThemedText>
+              <PrimaryButton
+                disabled={loading || savingPeriod}
+                onPress={saveRegistrationPeriod}
+              >
+                {savingPeriod ? '保存中…' : '登録期間を保存'}
+              </PrimaryButton>
+              {registrationFeedback ? (
+                <ThemedText
+                  type="small"
+                  themeColor={
+                    registrationFeedback.includes('保存しました')
+                      ? 'textSecondary'
+                      : 'danger'
+                  }
+                >
+                  {registrationFeedback}
+                </ThemedText>
+              ) : null}
+            </SurfaceCard>
+
             <SurfaceCard style={styles.memberCard}>
               {loading ? (
                 <ThemedText type="small" themeColor="textSecondary">
@@ -198,7 +283,7 @@ export default function MembersScreen() {
                 </ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">
-                メールアドレスを入力して、このroomへの招待を登録します。
+                メールアドレスを入力して、このイベントへの招待を登録します。
               </ThemedText>
               <View style={[styles.inputShell, { backgroundColor: '#f3f4ff' }]}>
                 <ThemedText style={{ color: theme.textDisabled, fontSize: 25 }}>
@@ -301,7 +386,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  periodFields: { gap: 10 },
   pressed: { opacity: 0.55 },
+  registrationCard: { gap: 14 },
+  registrationHeading: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  registrationTitle: { flex: 1, gap: 2 },
   safeArea: { flex: 1 },
   screen: { flex: 1 },
 });

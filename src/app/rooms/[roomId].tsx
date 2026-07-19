@@ -27,6 +27,7 @@ import {
 import {
   ensureCurrentUserRoomMembership,
   fetchRoomById,
+  isExpenseRegistrationOpen,
   type RoomMemberRecord,
   type RoomRecord,
 } from '@/lib/rooms';
@@ -53,7 +54,7 @@ export default function RoomDetailScreen() {
     Boolean(roomId && isSupabaseConfigured),
   );
   const [error, setError] = useState<string | null>(
-    roomId ? null : 'roomが指定されていません。',
+    roomId ? null : 'イベントが指定されていません。',
   );
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function RoomDetailScreen() {
         const message =
           caught instanceof Error
             ? caught.message
-            : 'roomを取得できませんでした。';
+            : 'イベントを取得できませんでした。';
         if (message.includes('ログインが必要')) router.replace('/login');
         else setError(message);
       })
@@ -105,6 +106,7 @@ export default function RoomDetailScreen() {
   const pendingCount = expenses.filter(
     (expense) => expense.status === 'pending',
   ).length;
+  const registrationOpen = room ? isExpenseRegistrationOpen(room) : false;
 
   return (
     <ThemedView type="backgroundElement" style={styles.screen}>
@@ -115,7 +117,7 @@ export default function RoomDetailScreen() {
               roomId ? (
                 <IconButton
                   accessibilityLabel={
-                    membership?.role === 'admin' ? '参加者管理' : '設定'
+                    membership?.role === 'admin' ? 'イベント管理' : '設定'
                   }
                   onPress={() =>
                     router.push(
@@ -133,7 +135,7 @@ export default function RoomDetailScreen() {
               ) : undefined
             }
             onBack={() => router.replace('/rooms')}
-            title={room?.name ?? 'room詳細'}
+            title={room?.name ?? 'イベント詳細'}
           />
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -195,6 +197,7 @@ export default function RoomDetailScreen() {
                   </View>
                   {roomId ? (
                     <PrimaryButton
+                      disabled={!registrationOpen}
                       onPress={() =>
                         router.push(`/rooms/${roomId}/expenses/new` as never)
                       }
@@ -204,11 +207,32 @@ export default function RoomDetailScreen() {
                         <SymbolView
                           name={{ ios: 'plus', android: 'add', web: 'add' }}
                           size={19}
-                          tintColor="#ffffff"
-                          fallback={<Text style={styles.whiteText}>＋</Text>}
+                          tintColor={
+                            registrationOpen ? '#ffffff' : theme.textSecondary
+                          }
+                          fallback={
+                            <Text
+                              style={[
+                                styles.whiteText,
+                                !registrationOpen && {
+                                  color: theme.textSecondary,
+                                },
+                              ]}
+                            >
+                              ＋
+                            </Text>
+                          }
                         />
-                        <ThemedText type="default" style={styles.whiteText}>
-                          支出を追加
+                        <ThemedText
+                          type="default"
+                          style={[
+                            styles.whiteText,
+                            !registrationOpen && {
+                              color: theme.textSecondary,
+                            },
+                          ]}
+                        >
+                          {registrationOpen ? '支出を追加' : '現在は登録期間外'}
                         </ThemedText>
                       </View>
                     </PrimaryButton>

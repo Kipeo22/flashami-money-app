@@ -296,6 +296,19 @@ export default function ExpenseDetailScreen() {
                   </ThemedText>
                 ) : null}
 
+                {expense.status === 'rejected' &&
+                expense.is_current_user_payer ? (
+                  <PrimaryButton
+                    onPress={() =>
+                      router.push(
+                        `/rooms/${roomId}/expenses/new?expenseId=${expenseId}` as never,
+                      )
+                    }
+                  >
+                    修正して再申請
+                  </PrimaryButton>
+                ) : null}
+
                 {expense.current_user_role === 'admin' ? (
                   <View style={styles.actions}>
                     <PrimaryButton
