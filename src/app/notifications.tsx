@@ -1,7 +1,21 @@
 import { SymbolView } from 'expo-symbols';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from 'react';
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BottomNav } from '@/components/bottom-nav';
@@ -14,11 +28,17 @@ import {
   type ExpenseListItem,
   type ExpenseStatus,
 } from '@/lib/expenses';
-import { fetchCurrentUserRooms, type UserRoomRecord } from '@/lib/rooms';
+import {
+  fetchCurrentUserRooms,
+  normalizeEmail,
+  requireAuthenticatedUser,
+  type UserRoomRecord,
+} from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 type NotificationItem = {
   expense: ExpenseListItem;
+  kind: 'action' | 'update';
   room: UserRoomRecord;
   tone: 'danger' | 'neutral' | 'primary';
 };
@@ -30,54 +50,80 @@ export default function NotificationsScreen() {
   const theme = useTheme();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedRoomCount, setFailedRoomCount] = useState(0);
+  const requestId = useRef(0);
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadNotifications() {
+  const loadNotifications = useCallback(
+    async (isRefresh = false) => {
+      const currentRequestId = ++requestId.current;
       if (!isSupabaseConfigured) {
         router.replace('/login');
         return;
       }
 
-      setIsLoading(true);
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
       setError(null);
+      setFailedRoomCount(0);
 
       try {
-        const rooms = await fetchCurrentUserRooms();
-        const roomExpenses = await Promise.all(
+        const [rooms, currentUser] = await Promise.all([
+          fetchCurrentUserRooms(),
+          requireAuthenticatedUser(),
+        ]);
+        const currentUserEmail = normalizeEmail(currentUser.email);
+        const roomResults = await Promise.allSettled(
           rooms.map(async (room) => ({
             expenses: await fetchRoomExpenses(room.id),
             room,
           })),
         );
 
-        if (!active) {
-          return;
-        }
+        if (currentRequestId !== requestId.current) return;
 
-        setItems(
-          roomExpenses
-            .flatMap(({ expenses, room }) =>
-              expenses
-                .filter((expense) =>
-                  ['approved', 'pending', 'rejected'].includes(expense.status),
-                )
-                .map((expense) => ({
-                  expense,
-                  room,
-                  tone: getNotificationTone(expense.status),
-                })),
-            )
-            .sort((first, second) =>
-              second.expense.created_at.localeCompare(first.expense.created_at),
-            ),
+        const roomExpenses = roomResults.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value] : [],
         );
-      } catch (caughtError) {
-        if (!active) {
-          return;
+        const failedCount = roomResults.length - roomExpenses.length;
+
+        const nextItems = roomExpenses
+          .flatMap(({ expenses, room }) =>
+            expenses
+              .filter(
+                (expense) =>
+                  expense.payer_id === currentUser.id ||
+                  expense.target_user_ids.includes(currentUser.id) ||
+                  expense.target_emails.some(
+                    (email) => normalizeEmail(email) === currentUserEmail,
+                  ),
+              )
+              .filter((expense) =>
+                ['approved', 'pending', 'rejected'].includes(expense.status),
+              )
+              .map((expense) => ({
+                expense,
+                kind:
+                  expense.status === 'rejected' &&
+                  expense.payer_id === currentUser.id
+                    ? ('action' as const)
+                    : ('update' as const),
+                room,
+                tone: getNotificationTone(expense.status),
+              })),
+          )
+          .sort((first, second) =>
+            second.expense.created_at.localeCompare(first.expense.created_at),
+          );
+
+        setItems(nextItems);
+        setFailedRoomCount(failedCount);
+        if (failedCount > 0 && roomExpenses.length === 0) {
+          setError('通知を取得できませんでした。');
         }
+      } catch (caughtError) {
+        if (currentRequestId !== requestId.current) return;
 
         const message =
           caughtError instanceof Error
@@ -91,32 +137,37 @@ export default function NotificationsScreen() {
 
         setError(message);
       } finally {
-        if (active) {
+        if (currentRequestId === requestId.current) {
           setIsLoading(false);
+          setIsRefreshing(false);
         }
       }
-    }
+    },
+    [router],
+  );
 
-    loadNotifications();
-
+  useEffect(() => {
+    const loadTimer = setTimeout(() => loadNotifications(), 0);
     return () => {
-      active = false;
+      clearTimeout(loadTimer);
+      requestId.current += 1;
     };
-  }, [router]);
+  }, [loadNotifications]);
 
-  const unreadCount = useMemo(
-    () =>
-      items.filter((item) =>
-        ['pending', 'rejected'].includes(item.expense.status),
-      ).length,
+  const actionItems = useMemo(
+    () => items.filter((item) => item.kind === 'action'),
+    [items],
+  );
+  const updateItems = useMemo(
+    () => items.filter((item) => item.kind === 'update'),
     [items],
   );
   const pendingCount = useMemo(
     () => items.filter((item) => item.expense.status === 'pending').length,
     [items],
   );
-  const rejectedCount = useMemo(
-    () => items.filter((item) => item.expense.status === 'rejected').length,
+  const approvedCount = useMemo(
+    () => items.filter((item) => item.expense.status === 'approved').length,
     [items],
   );
 
@@ -126,6 +177,13 @@ export default function NotificationsScreen() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              onRefresh={() => loadNotifications(true)}
+              refreshing={isRefreshing}
+              tintColor={theme.primary}
+            />
+          }
           showsVerticalScrollIndicator={false}
         >
           <ThemedView style={styles.container}>
@@ -150,7 +208,7 @@ export default function NotificationsScreen() {
                 <View
                   style={[
                     styles.summaryIcon,
-                    { backgroundColor: theme.primarySoft },
+                    { backgroundColor: `${theme.danger}14` },
                   ]}
                 >
                   <SymbolView
@@ -160,17 +218,17 @@ export default function NotificationsScreen() {
                       web: 'notifications_active',
                     }}
                     size={24}
-                    tintColor={theme.primary}
-                    fallback={<Text style={{ color: theme.primary }}>!</Text>}
+                    tintColor={theme.danger}
+                    fallback={<Text style={{ color: theme.danger }}>!</Text>}
                   />
                 </View>
                 <View style={styles.summaryText}>
                   <ThemedText type="small" themeColor="textSecondary">
-                    確認が必要
+                    要対応
                   </ThemedText>
                   <View style={styles.summaryCountRow}>
                     <ThemedText style={styles.summaryCount}>
-                      {unreadCount}
+                      {actionItems.length}
                     </ThemedText>
                     <ThemedText type="small" themeColor="textSecondary">
                       件
@@ -199,9 +257,9 @@ export default function NotificationsScreen() {
                   ]}
                 />
                 <SummaryStat
-                  color={theme.danger}
-                  count={rejectedCount}
-                  label="差し戻し"
+                  color={theme.primary}
+                  count={approvedCount}
+                  label="承認済み"
                 />
               </View>
             </ThemedView>
@@ -211,7 +269,21 @@ export default function NotificationsScreen() {
             ) : null}
 
             {error ? (
-              <InfoCard title="取得に失敗しました">{error}</InfoCard>
+              <InfoCard
+                onRetry={() => loadNotifications()}
+                title="取得に失敗しました"
+              >
+                {error}
+              </InfoCard>
+            ) : null}
+
+            {!error && failedRoomCount > 0 ? (
+              <InfoCard
+                onRetry={() => loadNotifications()}
+                title="一部を表示できません"
+              >
+                {`${failedRoomCount}件のイベントは取得できませんでした。取得できた通知のみ表示しています。`}
+              </InfoCard>
             ) : null}
 
             {!isLoading && !error && items.length === 0 ? (
@@ -220,48 +292,59 @@ export default function NotificationsScreen() {
               </InfoCard>
             ) : null}
 
-            {!isLoading && !error && items.length > 0 ? (
-              <View style={styles.notificationsSection}>
-                <View style={styles.sectionHeader}>
-                  <ThemedText style={styles.sectionTitle}>
-                    最近の通知
-                  </ThemedText>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {items.length}件
-                  </ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.list,
-                    {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: theme.border,
-                    },
-                  ]}
-                >
-                  {items.map((item, index) => (
-                    <View
-                      key={`${item.room.id}-${item.expense.id}-${item.expense.status}`}
-                    >
-                      {index > 0 ? (
-                        <View
-                          style={[
-                            styles.rowSeparator,
-                            { backgroundColor: theme.border },
-                          ]}
-                        />
-                      ) : null}
-                      <NotificationRow item={item} />
-                    </View>
-                  ))}
-                </View>
-              </View>
+            {!isLoading && !error && actionItems.length > 0 ? (
+              <NotificationSection items={actionItems} title="要対応" />
+            ) : null}
+            {!isLoading && !error && updateItems.length > 0 ? (
+              <NotificationSection items={updateItems} title="ステータス更新" />
             ) : null}
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
       <BottomNav />
     </ThemedView>
+  );
+}
+
+function NotificationSection({
+  items,
+  title,
+}: {
+  items: NotificationItem[];
+  title: string;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.notificationsSection}>
+      <View style={styles.sectionHeader}>
+        <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {items.length}件
+        </ThemedText>
+      </View>
+      <View
+        style={[
+          styles.list,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        {items.map((item, index) => (
+          <View
+            key={`${item.room.id}-${item.expense.id}-${item.expense.status}`}
+          >
+            {index > 0 ? (
+              <View
+                style={[styles.rowSeparator, { backgroundColor: theme.border }]}
+              />
+            ) : null}
+            <NotificationRow item={item} />
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -350,7 +433,15 @@ function NotificationRow({ item }: { item: NotificationItem }) {
   );
 }
 
-function InfoCard({ children, title }: { children: string; title: string }) {
+function InfoCard({
+  children,
+  onRetry,
+  title,
+}: {
+  children: string;
+  onRetry?: () => void;
+  title: string;
+}) {
   const theme = useTheme();
 
   return (
@@ -362,6 +453,17 @@ function InfoCard({ children, title }: { children: string; title: string }) {
       <ThemedText type="small" themeColor="textSecondary">
         {children}
       </ThemedText>
+      {onRetry ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onRetry}
+          style={[styles.retryButton, { borderColor: theme.primary }]}
+        >
+          <ThemedText type="smallBold" style={{ color: theme.primary }}>
+            再読み込み
+          </ThemedText>
+        </Pressable>
+      ) : null}
     </ThemedView>
   );
 }
@@ -583,6 +685,16 @@ const styles = StyleSheet.create({
   rowSeparator: {
     height: StyleSheet.hairlineWidth,
     marginLeft: 80,
+  },
+  retryButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: Radius.pill,
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.three,
   },
   statusIcon: {
     width: 44,

@@ -13,10 +13,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/date-field';
 import { AppHeader, PrimaryButton, SurfaceCard } from '@/components/ios-ui';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
+import { Fonts, MaxContentWidth } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { createRoomWithMembers } from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -28,6 +29,10 @@ export default function CreateRoomScreen() {
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [expenseRegistrationStartDate, setExpenseRegistrationStartDate] =
+    useState('');
+  const [expenseRegistrationEndDate, setExpenseRegistrationEndDate] =
+    useState('');
   const [integrationOpen, setIntegrationOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -43,6 +48,8 @@ export default function CreateRoomScreen() {
       const room = await createRoomWithMembers({
         description,
         endDate,
+        expenseRegistrationEndDate,
+        expenseRegistrationStartDate,
         memberEmails: [],
         name,
         startDate,
@@ -50,7 +57,9 @@ export default function CreateRoomScreen() {
       router.replace(`/rooms/${room.id}` as never);
     } catch (error) {
       setFeedback(
-        error instanceof Error ? error.message : 'roomを作成できませんでした。',
+        error instanceof Error
+          ? error.message
+          : 'イベントを作成できませんでした。',
       );
     } finally {
       setSubmitting(false);
@@ -65,14 +74,14 @@ export default function CreateRoomScreen() {
           style={styles.safeArea}
         >
           <View style={styles.container}>
-            <AppHeader title="新しいroomを作成" />
+            <AppHeader title="新しいイベントを作成" />
             <ScrollView
               style={styles.scrollView}
               contentContainerStyle={styles.content}
               keyboardShouldPersistTaps="handled"
             >
               <Field
-                label="room名"
+                label="イベント名"
                 hint="旅行やイベントの名前を入力してください。"
               >
                 <TextInput
@@ -102,34 +111,42 @@ export default function CreateRoomScreen() {
                 />
               </Field>
 
-              <Field label="期間" hint="日程が未定の場合は空欄でも構いません。">
-                <View
-                  style={[
-                    styles.dateShell,
-                    { backgroundColor: theme.overBackground },
-                  ]}
-                >
-                  <DateInput
+              <Field
+                label="イベント期間"
+                hint="日程が未定の場合は空欄でも構いません。"
+              >
+                <View style={styles.dateFields}>
+                  <DateField
+                    allowClear
+                    onChange={setStartDate}
+                    placeholder="開始日を選択"
                     value={startDate}
-                    onChangeText={setStartDate}
-                    placeholder="yyyy-mm-dd"
                   />
-                  <SymbolView
-                    name={{
-                      ios: 'arrow.right',
-                      android: 'arrow_forward',
-                      web: 'arrow_forward',
-                    }}
-                    size={18}
-                    tintColor={theme.textSecondary}
-                    fallback={
-                      <Text style={{ color: theme.textSecondary }}>→</Text>
-                    }
-                  />
-                  <DateInput
+                  <DateField
+                    allowClear
+                    onChange={setEndDate}
+                    placeholder="終了日を選択"
                     value={endDate}
-                    onChangeText={setEndDate}
-                    placeholder="yyyy-mm-dd"
+                  />
+                </View>
+              </Field>
+
+              <Field
+                label="支出登録期間"
+                hint="参加者が支出を登録できる期間です。空欄なら期間を制限しません。"
+              >
+                <View style={styles.dateFields}>
+                  <DateField
+                    allowClear
+                    onChange={setExpenseRegistrationStartDate}
+                    placeholder="登録開始日を選択"
+                    value={expenseRegistrationStartDate}
+                  />
+                  <DateField
+                    allowClear
+                    onChange={setExpenseRegistrationEndDate}
+                    placeholder="登録終了日を選択"
+                    value={expenseRegistrationEndDate}
                   />
                 </View>
               </Field>
@@ -187,7 +204,7 @@ export default function CreateRoomScreen() {
                       themeColor="textSecondary"
                       style={styles.integrationNote}
                     >
-                      room作成後、設定画面から連携先を登録できます。
+                      イベント作成後、設定画面から連携先を登録できます。
                     </ThemedText>
                   ) : null}
                 </SurfaceCard>
@@ -209,7 +226,7 @@ export default function CreateRoomScreen() {
                 disabled={!name.trim() || submitting}
                 onPress={submit}
               >
-                {submitting ? '作成中…' : 'roomを作成 →'}
+                {submitting ? '作成中…' : 'イベントを作成 →'}
               </PrimaryButton>
             </View>
           </View>
@@ -241,40 +258,6 @@ function Field({
   );
 }
 
-function DateInput({
-  onChangeText,
-  placeholder,
-  value,
-}: {
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  value: string;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={styles.dateInputWrap}>
-      <SymbolView
-        name={{
-          ios: 'calendar',
-          android: 'calendar_today',
-          web: 'calendar_today',
-        }}
-        size={17}
-        tintColor={theme.textSecondary}
-        fallback={<Text style={{ color: theme.textSecondary }}>□</Text>}
-      />
-      <TextInput
-        inputMode="numeric"
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.textDisabled}
-        style={[styles.dateInput, { color: theme.text }]}
-        value={value}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -285,22 +268,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   content: { gap: 30, paddingTop: 14, paddingBottom: 112 },
-  dateInput: { flex: 1, minWidth: 0, fontFamily: Fonts.sans, fontSize: 15 },
-  dateInputWrap: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dateShell: {
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: Radius.control,
-    paddingHorizontal: 14,
-  },
+  dateFields: { gap: 10 },
   field: { gap: 9 },
   footer: {
     position: 'absolute',

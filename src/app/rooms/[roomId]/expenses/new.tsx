@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -5,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DateField } from '@/components/date-field';
 import {
   AppHeader,
   PrimaryButton,
@@ -27,11 +30,21 @@ import { Fonts, MaxContentWidth, Radius } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   createExpenseWithTargets,
+  fetchExpenseById,
   fetchExpenseTargetCandidates,
+  updateRejectedExpenseWithTargets,
+  validateExpenseInput,
   type ExpenseType,
   type SplitType,
 } from '@/lib/expenses';
-import type { RoomMemberRecord } from '@/lib/rooms';
+import {
+  fetchRoomById,
+  getLocalIsoDate,
+  isExpenseRegistrationOpen,
+  normalizeEmail,
+  type RoomMemberRecord,
+  type RoomRecord,
+} from '@/lib/rooms';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const categories = [
@@ -52,8 +65,15 @@ const noReceiptReasons = [
 ];
 
 export default function ExpenseFormScreen() {
-  const params = useLocalSearchParams<{ roomId?: string; type?: string }>();
+  const params = useLocalSearchParams<{
+    expenseId?: string;
+    roomId?: string;
+    type?: string;
+  }>();
   const roomId = Array.isArray(params.roomId) ? undefined : params.roomId;
+  const expenseId = Array.isArray(params.expenseId)
+    ? undefined
+    : params.expenseId;
   const initialType: ExpenseType =
     params.type === 'personal' ? 'personal' : 'common';
   const router = useRouter();
@@ -61,7 +81,7 @@ export default function ExpenseFormScreen() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [paidAt, setPaidAt] = useState(today());
+  const [paidAt, setPaidAt] = useState(getLocalIsoDate());
   const [expenseType, setExpenseType] = useState<ExpenseType>(initialType);
   const [splitType, setSplitType] = useState<SplitType>('equal');
   const [members, setMembers] = useState<RoomMemberRecord[]>([]);
@@ -72,31 +92,168 @@ export default function ExpenseFormScreen() {
   const [noReceiptReason, setNoReceiptReason] = useState('');
   const [noReceiptNote, setNoReceiptNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(Boolean(roomId));
+  const [confirming, setConfirming] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const [room, setRoom] = useState<RoomRecord | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const draftKey = roomId
+    ? `flashami-money-app:expense-draft:${roomId}:${expenseId ?? 'new'}`
+    : null;
 
   useEffect(() => {
     let active = true;
     if (!roomId || !isSupabaseConfigured) return;
-    fetchExpenseTargetCandidates(roomId)
-      .then((data) => active && setMembers(data))
-      .catch(
-        (error) =>
-          active &&
+    const resolvedRoomId = roomId;
+    const restoreSavedDraft = (draft: ExpenseDraft) => {
+      setAmount(draft.amount ?? '');
+      setCategory(draft.category ?? '');
+      setDescription(draft.description ?? '');
+      setExpenseType(draft.expenseType ?? initialType);
+      setNoReceiptNote(draft.noReceiptNote ?? '');
+      setNoReceiptReason(draft.noReceiptReason ?? '');
+      setPaidAt(draft.paidAt ?? getLocalIsoDate());
+      setSelectedIds(draft.selectedIds ?? []);
+      setShares(draft.shares ?? {});
+      setSplitType(draft.splitType ?? 'equal');
+    };
+    async function loadForm() {
+      try {
+        const [memberData, roomData, savedDraft] = await Promise.all([
+          fetchExpenseTargetCandidates(resolvedRoomId),
+          fetchRoomById(resolvedRoomId),
+          draftKey ? AsyncStorage.getItem(draftKey) : Promise.resolve(null),
+        ]);
+        if (!active) return;
+        setMembers(memberData);
+        setRoom(roomData);
+
+        if (expenseId) {
+          const expense = await fetchExpenseById(resolvedRoomId, expenseId);
+          if (!active) return;
+          if (!expense.is_current_user_payer || expense.status !== 'rejected') {
+            throw new Error('この支出は修正して再申請できません。');
+          }
+          setAmount(String(expense.amount));
+          setCategory(expense.category);
+          setDescription(expense.description);
+          setExpenseType(expense.expense_type);
+          setPaidAt(expense.paid_at);
+          setSplitType(expense.split_type ?? 'equal');
+          setReceiptUri(expense.receipt_image_url ?? '');
+          setNoReceiptReason(expense.no_receipt_reason ?? '');
+          setNoReceiptNote(expense.no_receipt_note ?? '');
+          const targetMembers = memberData.filter((member) =>
+            expense.targets.some(
+              (target) =>
+                (target.user_id && target.user_id === member.user_id) ||
+                (target.email &&
+                  normalizeEmail(target.email) ===
+                    normalizeEmail(member.email)),
+            ),
+          );
+          setSelectedIds(targetMembers.map((member) => member.id));
+          setShares(
+            Object.fromEntries(
+              targetMembers.map((member) => {
+                const target = expense.targets.find(
+                  (candidate) =>
+                    (candidate.user_id &&
+                      candidate.user_id === member.user_id) ||
+                    (candidate.email &&
+                      normalizeEmail(candidate.email) ===
+                        normalizeEmail(member.email)),
+                );
+                return [member.id, String(target?.amount_share ?? '')];
+              }),
+            ),
+          );
+          if (savedDraft) {
+            restoreSavedDraft(JSON.parse(savedDraft) as ExpenseDraft);
+          }
+        } else if (savedDraft) {
+          restoreSavedDraft(JSON.parse(savedDraft) as ExpenseDraft);
+        }
+      } catch (error) {
+        if (active) {
           setFeedback(
             error instanceof Error
               ? error.message
-              : '参加者を取得できませんでした。',
-          ),
-      );
+              : '支出入力画面を読み込めませんでした。',
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+          setDraftHydrated(true);
+        }
+      }
+    }
+
+    loadForm();
     return () => {
       active = false;
     };
-  }, [roomId]);
+  }, [draftKey, expenseId, initialType, roomId]);
+
+  useEffect(() => {
+    if (!draftHydrated || !draftKey) return;
+    const draft: ExpenseDraft = {
+      amount,
+      category,
+      description,
+      expenseType,
+      noReceiptNote,
+      noReceiptReason,
+      paidAt,
+      selectedIds,
+      shares,
+      splitType,
+    };
+    AsyncStorage.setItem(draftKey, JSON.stringify(draft)).catch(() => {
+      // Draft persistence is best-effort and must not block registration.
+    });
+  }, [
+    amount,
+    category,
+    description,
+    draftHydrated,
+    draftKey,
+    expenseType,
+    noReceiptNote,
+    noReceiptReason,
+    paidAt,
+    selectedIds,
+    shares,
+    splitType,
+  ]);
 
   const selectedMembers = useMemo(
     () => members.filter((member) => selectedIds.includes(member.id)),
     [members, selectedIds],
   );
+  const parsedAmount = Number(amount.replaceAll(',', ''));
+  const shareTotal = selectedMembers.reduce(
+    (total, member) => total + Number(shares[member.id] || 0),
+    0,
+  );
+  const targetNames = selectedMembers
+    .map((member) => member.display_name || member.email)
+    .join('、');
+  const targetShareSummary = selectedMembers
+    .map((member, index) => {
+      const baseShare = Math.floor(parsedAmount / selectedMembers.length);
+      const remainder = parsedAmount % selectedMembers.length;
+      const memberShare =
+        splitType === 'custom'
+          ? Number(shares[member.id] ?? 0)
+          : baseShare + (index < remainder ? 1 : 0);
+      return `${member.display_name || member.email}：¥${memberShare.toLocaleString(
+        'ja-JP',
+      )}`;
+    })
+    .join('\n');
+  const registrationOpen = room ? isExpenseRegistrationOpen(room) : false;
 
   const setReceipt = (asset?: ImagePicker.ImagePickerAsset) => {
     if (!asset?.base64) {
@@ -141,35 +298,83 @@ export default function ExpenseFormScreen() {
     );
   };
 
-  const submit = async () => {
+  const buildInput = () => ({
+    amount: parsedAmount,
+    category,
+    description,
+    expenseType,
+    noReceiptNote,
+    noReceiptReason,
+    paidAt,
+    receiptImageBase64: receiptBase64,
+    receiptImageUrl: receiptUri,
+    roomId: roomId ?? '',
+    splitType: expenseType === 'personal' ? splitType : null,
+    targets: selectedMembers.map((member) => ({
+      amountShare:
+        splitType === 'custom' ? Number(shares[member.id] ?? 0) : null,
+      member,
+    })),
+  });
+
+  const openConfirmation = () => {
     if (!roomId) {
-      setFeedback('roomが指定されていません。');
+      setFeedback('イベントが指定されていません。');
       return;
     }
+    if (!registrationOpen) {
+      setFeedback('このイベントは現在、支出登録期間外です。');
+      return;
+    }
+    const validationError = validateExpenseInput(buildInput());
+    if (validationError) {
+      setFeedback(validationError);
+      return;
+    }
+    setFeedback(null);
+    setConfirming(true);
+  };
+
+  const distributeSharesEqually = () => {
+    if (!Number.isInteger(parsedAmount) || parsedAmount < 1) {
+      setFeedback('先に支出金額を入力してください。');
+      return;
+    }
+    if (selectedMembers.length === 0) {
+      setFeedback('対象者を1人以上選択してください。');
+      return;
+    }
+    const base = Math.floor(parsedAmount / selectedMembers.length);
+    const remainder = parsedAmount % selectedMembers.length;
+    setShares(
+      Object.fromEntries(
+        selectedMembers.map((member, index) => [
+          member.id,
+          String(base + (index < remainder ? 1 : 0)),
+        ]),
+      ),
+    );
+    setFeedback(null);
+  };
+
+  const submit = async () => {
+    if (!roomId) return;
     setSubmitting(true);
     setFeedback(null);
     try {
-      const parsedAmount = Number(amount.replaceAll(',', ''));
-      const expense = await createExpenseWithTargets({
-        amount: parsedAmount,
-        category,
-        description,
-        expenseType,
-        noReceiptNote,
-        noReceiptReason,
-        paidAt,
-        receiptImageBase64: receiptBase64,
-        receiptImageUrl: receiptUri,
-        roomId,
-        splitType: expenseType === 'personal' ? splitType : null,
-        targets: selectedMembers.map((member) => ({
-          amountShare:
-            splitType === 'custom' ? Number(shares[member.id] ?? 0) : null,
-          member,
-        })),
-      });
+      const expense = expenseId
+        ? await updateRejectedExpenseWithTargets({
+            ...buildInput(),
+            expenseId,
+          })
+        : await createExpenseWithTargets(buildInput());
+      if (draftKey) {
+        await AsyncStorage.removeItem(draftKey);
+      }
+      setConfirming(false);
       router.replace(`/rooms/${roomId}/expenses/${expense.id}` as never);
     } catch (error) {
+      setConfirming(false);
       setFeedback(
         error instanceof Error ? error.message : '支出を登録できませんでした。',
       );
@@ -186,16 +391,33 @@ export default function ExpenseFormScreen() {
           style={styles.safeArea}
         >
           <View style={styles.headerWrap}>
-            <AppHeader title="支出を入力" />
+            <AppHeader title={expenseId ? '支出を修正' : '支出を入力'} />
           </View>
           <ScrollView
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.container}>
+              {room ? (
+                <SurfaceCard style={styles.roomBanner}>
+                  <View style={styles.roomBannerText}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      登録先
+                    </ThemedText>
+                    <ThemedText type="smallBold">{room.name}</ThemedText>
+                  </View>
+                  <ThemedText
+                    type="smallBold"
+                    themeColor={registrationOpen ? 'primary' : 'danger'}
+                  >
+                    {registrationOpen ? '登録受付中' : '登録期間外'}
+                  </ThemedText>
+                </SurfaceCard>
+              ) : null}
+
               <View style={styles.amountSection}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  金額
+                  金額 <ThemedText themeColor="danger">*</ThemedText>
                 </ThemedText>
                 <View
                   style={[
@@ -222,7 +444,7 @@ export default function ExpenseFormScreen() {
                   { backgroundColor: theme.overBackground },
                 ]}
               >
-                <Field label="支出タイプ">
+                <Field label="支出タイプ" required>
                   <View
                     style={[
                       styles.segment,
@@ -241,7 +463,7 @@ export default function ExpenseFormScreen() {
                     />
                   </View>
                 </Field>
-                <Field label="カテゴリ">
+                <Field label="カテゴリ" required>
                   <View style={styles.chips}>
                     {categories.map((item) => (
                       <Chip
@@ -253,7 +475,7 @@ export default function ExpenseFormScreen() {
                     ))}
                   </View>
                 </Field>
-                <Field label="内容">
+                <Field label="内容" required>
                   <TextInput
                     onChangeText={setDescription}
                     placeholder="例：食べ歩き"
@@ -268,19 +490,10 @@ export default function ExpenseFormScreen() {
                     value={description}
                   />
                 </Field>
-                <Field label="支払日">
-                  <TextInput
-                    inputMode="numeric"
-                    onChangeText={setPaidAt}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={theme.textDisabled}
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: theme.backgroundElement,
-                        color: theme.text,
-                      },
-                    ]}
+                <Field label="支払日" required>
+                  <DateField
+                    onChange={setPaidAt}
+                    placeholder="支払日を選択"
                     value={paidAt}
                   />
                 </Field>
@@ -293,7 +506,7 @@ export default function ExpenseFormScreen() {
                     { backgroundColor: theme.overBackground },
                   ]}
                 >
-                  <Field label="割り方">
+                  <Field label="割り方" required>
                     <View
                       style={[
                         styles.segment,
@@ -314,7 +527,7 @@ export default function ExpenseFormScreen() {
                   </Field>
                   <View style={styles.labelRow}>
                     <ThemedText type="small" themeColor="textSecondary">
-                      対象者
+                      対象者 <ThemedText themeColor="danger">*</ThemedText>
                     </ThemedText>
                     <Pressable
                       onPress={() =>
@@ -343,6 +556,39 @@ export default function ExpenseFormScreen() {
                   </View>
                   {splitType === 'custom' && selectedMembers.length > 0 ? (
                     <View style={styles.shareList}>
+                      <View style={styles.shareSummary}>
+                        <View>
+                          <ThemedText type="small" themeColor="textSecondary">
+                            入力合計
+                          </ThemedText>
+                          <ThemedText type="smallBold">
+                            ¥{shareTotal.toLocaleString('ja-JP')} / ¥
+                            {Number.isFinite(parsedAmount)
+                              ? parsedAmount.toLocaleString('ja-JP')
+                              : '0'}
+                          </ThemedText>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={distributeSharesEqually}
+                          style={styles.equalShareButton}
+                        >
+                          <ThemedText
+                            type="smallBold"
+                            style={{ color: theme.primary }}
+                          >
+                            均等に入力
+                          </ThemedText>
+                        </Pressable>
+                      </View>
+                      {shareTotal !== parsedAmount ? (
+                        <ThemedText type="small" themeColor="danger">
+                          {shareTotal < parsedAmount ? '残り' : '超過'} ¥
+                          {Math.abs(parsedAmount - shareTotal).toLocaleString(
+                            'ja-JP',
+                          )}
+                        </ThemedText>
+                      ) : null}
                       {selectedMembers.map((member) => (
                         <View key={member.id} style={styles.shareRow}>
                           <ThemedText type="small">
@@ -442,7 +688,7 @@ export default function ExpenseFormScreen() {
 
                 {!receiptUri ? (
                   <>
-                    <Field label="レシートなし理由">
+                    <Field label="レシートなし理由" required>
                       <View style={styles.chips}>
                         {noReceiptReasons.map((reason) => (
                           <Chip
@@ -454,7 +700,7 @@ export default function ExpenseFormScreen() {
                         ))}
                       </View>
                     </Field>
-                    <Field label="補足メモ">
+                    <Field label="補足メモ" required>
                       <TextInput
                         multiline
                         onChangeText={setNoReceiptNote}
@@ -480,13 +726,97 @@ export default function ExpenseFormScreen() {
                   {feedback}
                 </ThemedText>
               ) : null}
-              <PrimaryButton disabled={submitting} onPress={submit}>
-                {submitting ? '登録中…' : '確認して登録 →'}
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                style={styles.draftNote}
+              >
+                文字入力はこの端末に下書きとして一時保存されます。
+              </ThemedText>
+              <PrimaryButton
+                disabled={loading || submitting || !registrationOpen}
+                onPress={openConfirmation}
+              >
+                {loading
+                  ? '読み込み中…'
+                  : expenseId
+                    ? '確認して再申請 →'
+                    : '確認して登録 →'}
               </PrimaryButton>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setConfirming(false)}
+        transparent
+        visible={confirming}
+      >
+        <View style={styles.confirmBackdrop}>
+          <View
+            style={[
+              styles.confirmCard,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
+            <ThemedText type="subtitle">
+              {expenseId ? 'この内容で再申請しますか？' : '登録内容の確認'}
+            </ThemedText>
+            <ScrollView
+              contentContainerStyle={styles.confirmRows}
+              showsVerticalScrollIndicator
+              style={styles.confirmScroll}
+            >
+              <ConfirmRow label="イベント" value={room?.name ?? '-'} />
+              <ConfirmRow
+                label="金額"
+                value={`¥${parsedAmount.toLocaleString('ja-JP')}`}
+              />
+              <ConfirmRow
+                label="種類"
+                value={expenseType === 'common' ? '共通経費' : '個人間立替'}
+              />
+              <ConfirmRow label="カテゴリ" value={category} />
+              <ConfirmRow label="内容" value={description} />
+              <ConfirmRow label="支払日" value={paidAt} />
+              {expenseType === 'personal' ? (
+                <>
+                  <ConfirmRow label="対象者" value={targetNames || '-'} />
+                  <ConfirmRow
+                    label="割り方"
+                    value={splitType === 'equal' ? '均等' : '金額指定'}
+                  />
+                  <ConfirmRow
+                    label="各自の金額"
+                    value={targetShareSummary || '-'}
+                  />
+                </>
+              ) : null}
+              <ConfirmRow
+                label="レシート"
+                value={receiptUri ? '添付あり' : '添付なし'}
+              />
+            </ScrollView>
+            <View style={styles.confirmActions}>
+              <SecondaryButton
+                onPress={() => setConfirming(false)}
+                style={styles.confirmAction}
+              >
+                戻って修正
+              </SecondaryButton>
+              <PrimaryButton
+                disabled={submitting}
+                onPress={submit}
+                style={styles.confirmAction}
+              >
+                {submitting ? '送信中…' : expenseId ? '再申請する' : '登録する'}
+              </PrimaryButton>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -494,14 +824,17 @@ export default function ExpenseFormScreen() {
 function Field({
   children,
   label,
+  required = false,
 }: {
   children: React.ReactNode;
   label: string;
+  required?: boolean;
 }) {
   return (
     <View style={styles.field}>
       <ThemedText type="small" themeColor="textSecondary">
-        {label}
+        {label}{' '}
+        {required ? <ThemedText themeColor="danger">*</ThemedText> : null}
       </ThemedText>
       {children}
     </View>
@@ -519,6 +852,8 @@ function SegmentButton({
   const theme = useTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={[
         styles.segmentButton,
@@ -546,6 +881,8 @@ function Chip({
   const theme = useTheme();
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={[
         styles.chip,
@@ -565,9 +902,32 @@ function Chip({
     </Pressable>
   );
 }
-function today() {
-  return new Date().toISOString().slice(0, 10);
+
+function ConfirmRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.confirmRow}>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <ThemedText type="smallBold" style={styles.confirmValue}>
+        {value}
+      </ThemedText>
+    </View>
+  );
 }
+
+type ExpenseDraft = {
+  amount: string;
+  category: string;
+  description: string;
+  expenseType: ExpenseType;
+  noReceiptNote: string;
+  noReceiptReason: string;
+  paidAt: string;
+  selectedIds: string[];
+  shares: Record<string, string>;
+  splitType: SplitType;
+};
 
 const styles = StyleSheet.create({
   amountInput: {
@@ -587,7 +947,7 @@ const styles = StyleSheet.create({
   },
   amountSection: { alignItems: 'center', gap: 4 },
   chip: {
-    minHeight: 38,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -595,12 +955,44 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  confirmAction: { flex: 1 },
+  confirmActions: { flexDirection: 'row', gap: 10 },
+  confirmBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(18, 20, 24, 0.52)',
+    padding: 20,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 400,
+    gap: 20,
+    borderRadius: Radius.panel,
+    padding: 20,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  confirmRows: { gap: 12 },
+  confirmScroll: { maxHeight: 390 },
+  confirmValue: { flex: 1, textAlign: 'right' },
   container: { width: '100%', maxWidth: MaxContentWidth, gap: 24 },
   content: {
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 34,
+  },
+  draftNote: { textAlign: 'center' },
+  equalShareButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   field: { gap: 8 },
   formCard: { gap: 18, padding: 16 },
@@ -646,19 +1038,27 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 32,
-    height: 32,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 22,
   },
   removeText: { color: '#ffffff', fontSize: 22 },
+  roomBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  roomBannerText: { flex: 1, gap: 2 },
   safeArea: { flex: 1 },
   screen: { flex: 1 },
   segment: { flexDirection: 'row', borderRadius: Radius.control, padding: 4 },
   segmentButton: {
     flex: 1,
-    minHeight: 38,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 7,
@@ -672,6 +1072,12 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   shareList: { gap: 8 },
+  shareSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
   shareRow: {
     flexDirection: 'row',
     alignItems: 'center',

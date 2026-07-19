@@ -42,7 +42,7 @@ export default function RoomsScreen() {
         const message =
           caught instanceof Error
             ? caught.message
-            : 'room一覧を取得できませんでした。';
+            : 'イベント一覧を取得できませんでした。';
         if (message.includes('ログインが必要')) router.replace('/login');
         else setError(message);
       })
@@ -74,7 +74,7 @@ export default function RoomsScreen() {
           </View>
           <View style={styles.topActions}>
             <IconButton
-              accessibilityLabel="roomを検索"
+              accessibilityLabel="イベントを検索"
               onPress={() => setSearchOpen((value) => !value)}
               symbol={{
                 ios: 'magnifyingglass',
@@ -82,12 +82,14 @@ export default function RoomsScreen() {
                 web: 'search',
               }}
             />
-            <IconButton
-              accessibilityLabel="roomを作成"
-              filled
-              onPress={() => router.push('/rooms/new')}
-              symbol={{ ios: 'plus', android: 'add', web: 'add' }}
-            />
+            {rooms.some((room) => room.member_role === 'admin') ? (
+              <IconButton
+                accessibilityLabel="イベントを作成"
+                filled
+                onPress={() => router.push('/rooms/new')}
+                symbol={{ ios: 'plus', android: 'add', web: 'add' }}
+              />
+            ) : null}
           </View>
         </View>
 
@@ -97,7 +99,7 @@ export default function RoomsScreen() {
         >
           <View style={styles.container}>
             <ThemedText type="title" style={styles.title}>
-              Rooms
+              イベント
             </ThemedText>
 
             {searchOpen ? (
@@ -122,7 +124,7 @@ export default function RoomsScreen() {
                 <TextInput
                   autoFocus
                   onChangeText={setQuery}
-                  placeholder="room名で検索"
+                  placeholder="イベント名で検索"
                   placeholderTextColor={theme.textDisabled}
                   style={[styles.searchInput, { color: theme.text }]}
                   value={query}
@@ -133,7 +135,7 @@ export default function RoomsScreen() {
             {loading ? (
               <MessageCard
                 title="読み込み中"
-                message="参加中のroomを確認しています。"
+                message="参加中のイベントを確認しています。"
               />
             ) : null}
             {error ? (
@@ -144,8 +146,8 @@ export default function RoomsScreen() {
               <SurfaceCard style={styles.emptyCard}>
                 <ThemedText type="default" style={styles.emptyTitle}>
                   {query
-                    ? '一致するroomがありません'
-                    : '参加中のroomがありません'}
+                    ? '一致するイベントがありません'
+                    : '参加中のイベントがありません'}
                 </ThemedText>
                 <ThemedText
                   type="small"
@@ -154,7 +156,7 @@ export default function RoomsScreen() {
                 >
                   {query
                     ? '別のキーワードを試してください。'
-                    : '右上の＋から最初のroomを作成できます。'}
+                    : '運営者からの招待をご確認ください。'}
                 </ThemedText>
               </SurfaceCard>
             ) : null}
@@ -193,10 +195,10 @@ export default function RoomsScreen() {
                     />
                     <View style={styles.noActiveText}>
                       <ThemedText type="smallBold">
-                        現在開催中のroomはありません
+                        現在開催中のイベントはありません
                       </ThemedText>
                       <ThemedText type="small" themeColor="textSecondary">
-                        開催予定と過去のroomは下から確認できます
+                        開催予定と過去のイベントは下から確認できます
                       </ThemedText>
                     </View>
                   </View>
@@ -209,7 +211,7 @@ export default function RoomsScreen() {
                 />
                 <CompactRoomSection
                   rooms={roomGroups.past}
-                  title="過去のroom"
+                  title="過去のイベント"
                   tone="past"
                 />
                 <CompactRoomSection
@@ -258,8 +260,8 @@ function ActiveRoomCard({ room }: { room: UserRoomRecord }) {
 
   return (
     <Pressable
-      accessibilityHint="room詳細を開きます"
-      accessibilityLabel={`開催中のroom、${room.name}`}
+      accessibilityHint="イベント詳細を開きます"
+      accessibilityLabel={`開催中のイベント、${room.name}`}
       accessibilityRole="button"
       onPress={() => router.push(`/rooms/${room.id}` as never)}
     >
@@ -326,7 +328,7 @@ function ActiveRoomCard({ room }: { room: UserRoomRecord }) {
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <View style={styles.openRoomRow}>
           <ThemedText type="smallBold" style={{ color: theme.primary }}>
-            roomを開く
+            イベントを開く
           </ThemedText>
           <SymbolView
             name={{
@@ -407,7 +409,7 @@ function CompactRoomRow({
 
   return (
     <Pressable
-      accessibilityHint="room詳細を開きます"
+      accessibilityHint="イベント詳細を開きます"
       accessibilityLabel={`${room.name}、${formatPeriod(room)}`}
       accessibilityRole="button"
       onPress={() => router.push(`/rooms/${room.id}` as never)}
