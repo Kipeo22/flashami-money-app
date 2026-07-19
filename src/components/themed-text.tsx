@@ -27,7 +27,7 @@ export function ThemedText({
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'text'] },
+        { color: theme[themeColor ?? 'text'], fontFamily: Fonts.sans },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
@@ -35,6 +35,7 @@ export function ThemedText({
         type === 'subtitle' && styles.subtitle,
         type === 'link' && styles.link,
         type === 'linkPrimary' && styles.linkPrimary,
+        type === 'linkPrimary' && { color: theme.link },
         type === 'code' && styles.code,
         style,
       ]}
@@ -46,37 +47,38 @@ export function ThemedText({
 const styles = StyleSheet.create({
   small: {
     fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
+    lineHeight: 21,
+    fontWeight: 400,
   },
   smallBold: {
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     fontWeight: 700,
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontWeight: 400,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontSize: 32,
+    fontWeight: 700,
+    lineHeight: 40,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: 700,
   },
   link: {
-    lineHeight: 30,
-    fontSize: 14,
+    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: 700,
   },
   linkPrimary: {
-    lineHeight: 30,
-    fontSize: 14,
-    color: '#3c87f7',
+    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: 700,
   },
   code: {
     fontFamily: Fonts.mono,
